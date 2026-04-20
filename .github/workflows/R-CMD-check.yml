@@ -36,17 +36,15 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - name: Install dependencies
+      - name: Install dependencies and check
         run: |
           install.packages(c("remotes", "rcmdcheck", "testthat"))
           remotes::install_deps(
             pkgdir       = ".",
             dependencies = c("Depends", "Imports", "LinkingTo")
           )
+          rcmdcheck::rcmdcheck(
+            args     = c("--no-manual", "--as-cran"),
+            error_on = "warning"
+          )
         shell: Rscript {0}
-
-      - uses: r-lib/actions/check-r-package@v2
-        with:
-          args: 'c("--no-manual", "--as-cran")'
-          error-on: '"warning"'
-          upload-snapshots: true
