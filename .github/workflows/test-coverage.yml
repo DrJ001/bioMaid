@@ -33,8 +33,6 @@ jobs:
 
       - uses: codecov/codecov-action@v4
         with:
+          files: ./cobertura.xml
           fail_ci_if_error: false
-          file: ./cobertura.xml
-          plugin: noop
-          disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
