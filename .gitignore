@@ -19,3 +19,9 @@ biomAid.Rcheck/
 # OS
 .DS_Store
 Thumbs.db
+
+# Editor temp files (Emacs, vim)
+\#*\#
+.\#*
+*.swp
+*.swo
