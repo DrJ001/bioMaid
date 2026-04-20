@@ -1,0 +1,28 @@
+Package: biomAid
+Title: Biometric Tools for Multi-Environment Plant Breeding Trials
+Version: 0.1.0
+Authors@R: 
+    person("J", "Taylor", role = c("aut", "cre"),
+           email = "j.taylor@example.com")
+Description: Provides biometric tools for analysing multi-environment plant
+    breeding trials fitted with ASReml-R V4 mixed models. Includes functions
+    for multiple comparison criteria (HSD, LSD, Bonferroni), Wald tests on
+    fixed-effect contrasts, Factor Analytic Selection Tools (FAST) and
+    interaction class (iClass) analysis, multivariate random and fixed
+    regression of treatment BLUPs/BLUEs, and simulation of multi-treatment
+    multi-environment trial data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends:
+    R (>= 4.1.0)
+Imports:
+    stats,
+    utils
+Suggests:
+    asreml,
+    ASExtras4,
+    testthat (>= 3.0.0),
+    devtools
+Config/testthat/edition: 3

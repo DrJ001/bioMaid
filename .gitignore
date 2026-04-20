@@ -1,0 +1,21 @@
+# R build artefacts
+*.Rproj.user
+*.Rhistory
+*.RData
+*.Ruserdata
+.Rproj.user/
+
+# R CMD check / build output
+*.tar.gz
+*.zip
+biomAid.Rcheck/
+
+# Generated documentation (re-built by devtools::document())
+# man/ is kept in source control so the package is usable without devtools
+# but the check log is not
+00check.log
+00install.out
+
+# OS
+.DS_Store
+Thumbs.db

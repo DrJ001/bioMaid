@@ -1,0 +1,650 @@
+---
+title: |
+  **Mathematical Framework for Multivariate Fixed-Effects Regression\
+  of Treatment BLUEs in Multi-Environment Trials**
+subtitle: "Theory underlying `fixedRegressMV()` in the BioMaid package"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    keep_tex: false
+    fig_caption: true
+    highlight: tango
+header-includes:
+  - \usepackage{amsmath, amssymb}
+  - \usepackage{unicode-math}
+  - \newcommand{\bm}[1]{\symbf{#1}}
+  - \usepackage{booktabs}
+  - \usepackage{array}
+  - \usepackage{xcolor}
+  - \usepackage{geometry}
+  - \geometry{margin=2.5cm}
+  - \usepackage{setspace}
+  - \onehalfspacing
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyhead[L]{\textit{BioMaid --- fixedRegressMV()}}
+  - \fancyhead[R]{\thepage}
+  - \fancyfoot[C]{}
+  - \renewcommand{\headrulewidth}{0.4pt}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+\newpage
+
+# Introduction and Motivation
+
+## Context: Fixed Effects in Multi-Treatment Trials
+
+In plant breeding multi-environment trials (METs) with multiple management
+treatments, the mixed model produces two types of predicted values for
+variety performance:
+
+- **BLUPs** (Best Linear Unbiased Predictors) --- shrinkage estimates of
+  random genetic effects, calibrated to the genetic variance--covariance
+  structure of the $\bm{G}$-matrix.
+- **BLUEs** (Best Linear Unbiased Estimators) --- fixed-effects predictions of
+  variety performance, estimated by generalised least squares without
+  shrinkage.
+
+The `randomRegressMV()` function uses the $\bm{G}$-matrix directly to
+decompose BLUPs into efficiency and responsiveness components via the
+multivariate conditional normal distribution.  `fixedRegressMV()` provides
+the analogous decomposition for BLUEs, replacing the $\bm{G}$-matrix
+conditioning with **ordinary least squares (OLS) regression** of one
+treatment's predicted values on another's across genotypes.
+
+## Relationship to Finlay--Wilkinson Regression
+
+The classical Finlay--Wilkinson (1963) regression regresses each variety's
+treatment-specific yield on the environment mean for that treatment.
+`fixedRegressMV()` is a direct multi-treatment generalisation of this idea:
+instead of regressing on environment means, it regresses one treatment's
+BLUE on another treatment's BLUE **across genotypes within each environment**,
+returning the OLS residual as a genotype-specific **response index**.
+
+## Overview of Conditioning Schemes
+
+The same four conditioning schemes from `randomRegressMV()` are available,
+differing only in the conditioning set $A_j$ chosen for each treatment $j$:
+
+| `type` | Conditioning set $A_j$ | $\bar{\bm{H}}_j$ rank | Key property |
+|:-------|:------------------------|:---------------------:|:-------------|
+| `"baseline"` | $\{T_1\}$ for all $j > 1$ | $n - 2$ | Residuals $\perp$ $T_1$ BLUEs |
+| `"sequential"` | $\{T_1,\ldots,T_{j-1}\}$ | $n - j$ | Gram--Schmidt orthogonality |
+| `"partial"` | All other treatments | $n - k$ | Partial regression residuals |
+| `"custom"` | User-specified | $n - |A_j| - 1$ | Flexible |
+
+\newpage
+
+# Fixed Effects in the Mixed Model
+
+## Model and BLUEs
+
+The linear mixed model is:
+
+$$
+\bm{y} = \bm{X}\bm{\tau} + \bm{Z}\bm{u} + \bm{e}
+$$
+
+where $\bm{\tau}$ is the vector of fixed effects (including
+Treatment $\times$ Genotype effects) and $\bm{u}$ is the vector of random
+effects.  The BLUEs of $\bm{\tau}$ are obtained from the mixed model
+equations:
+
+$$
+\hat{\bm{\tau}} = \left(\bm{X}^\top\bm{V}^{-1}\bm{X}\right)^{-1}
+                   \bm{X}^\top\bm{V}^{-1}\bm{y}
+$$
+
+where $\bm{V} = \bm{Z}\bm{G}\bm{Z}^\top + \bm{R}$ is the marginal
+variance--covariance matrix of $\bm{y}$.  For a
+Treatment $\times$ Site $\times$ Genotype term the BLUEs are the predicted
+values returned by ASReml-R's \texttt{predict()} function.
+
+## Key Distinction from BLUPs
+
+Unlike BLUPs, which are shrunk towards zero by the $\bm{G}$-matrix prior,
+BLUEs are unbiased estimators of fixed treatment effects with no shrinkage.
+The regression of one treatment's BLUEs on another's is therefore a
+**data-driven** operation --- the regression coefficient $\hat{\bm{\beta}}_j$
+is estimated from the observed predicted values, not from a modelled
+genetic covariance structure.
+
+This means:
+- The regression coefficient varies from group to group (across sites) as
+  a natural consequence of GxE interaction, not from structural assumptions.
+- The response index variance is characterised by the OLS residual mean
+  square $\hat{\sigma}_j^2$ and the hat-matrix annihilator $\bar{\bm{H}}_j$,
+  giving clean, natural degrees of freedom $df_j = n - |A_j| - 1$.
+
+\newpage
+
+# The Bivariate Case: Two Treatments
+
+## OLS Regression of Treatment BLUEs
+
+Let $\hat{\bm{\tau}}_1$ and $\hat{\bm{\tau}}_2$ be the $n$-vectors of BLUEs
+for treatments 1 (baseline) and 2 (active) across $n$ genotypes within a
+group (e.g. a single site).  The OLS regression of $\hat{\bm{\tau}}_2$ on
+$\hat{\bm{\tau}}_1$ fits the model:
+
+$$
+\hat{\bm{\tau}}_2 = \alpha\,\bm{1} + \hat{\beta}\,\hat{\bm{\tau}}_1 + \tilde{\bm{\tau}}_2
+$$
+
+with design matrix $\bm{X}_1 = [\bm{1},\, \hat{\bm{\tau}}_1]$ and OLS
+estimators:
+
+$$
+\begin{pmatrix} \hat{\alpha} \\ \hat{\beta} \end{pmatrix}
+= \left(\bm{X}_1^\top\bm{X}_1\right)^{-1}\bm{X}_1^\top\hat{\bm{\tau}}_2
+$$
+
+$$
+\hat{\beta}
+= \frac{\sum_i (\hat{\tau}_{1i} - \bar{\tau}_1)(\hat{\tau}_{2i} - \bar{\tau}_2)}
+       {\sum_i (\hat{\tau}_{1i} - \bar{\tau}_1)^2}
+$$
+
+## The Hat-Matrix Annihilator
+
+The hat-matrix annihilator (residual maker) is:
+
+$$
+\bar{\bm{H}}_1 = \bm{I}_n - \bm{X}_1\left(\bm{X}_1^\top\bm{X}_1\right)^{-1}\bm{X}_1^\top
+$$
+
+It has three fundamental properties:
+
+$$
+\bar{\bm{H}}_1^\top = \bar{\bm{H}}_1 \qquad \text{(symmetric)}
+$$
+$$
+\bar{\bm{H}}_1^2 = \bar{\bm{H}}_1 \qquad \text{(idempotent)}
+$$
+$$
+\bar{\bm{H}}_1\bm{X}_1 = \bm{0} \qquad \text{(annihilates the column space of } \bm{X}_1)
+$$
+
+## Response Index and Its Variance
+
+The **response index** is the vector of OLS residuals:
+
+$$
+\tilde{\bm{\tau}}_2 = \bar{\bm{H}}_1\,\hat{\bm{\tau}}_2
+$$
+
+Its variance--covariance matrix under the OLS model is:
+
+$$
+\text{Var}(\tilde{\bm{\tau}}_2) = \hat{\sigma}_2^2\,\bar{\bm{H}}_1,
+\qquad
+\hat{\sigma}_2^2 = \frac{\tilde{\bm{\tau}}_2^\top\tilde{\bm{\tau}}_2}{n - 2}
+$$
+
+Because $\bar{\bm{H}}_1\bm{X}_1 = \bm{0}$, the response index is orthogonal
+to both the intercept and $\hat{\bm{\tau}}_1$:
+
+$$
+\tilde{\bm{\tau}}_2^\top\bm{1} = 0
+\qquad \text{and} \qquad
+\tilde{\bm{\tau}}_2^\top\hat{\bm{\tau}}_1 = 0
+$$
+
+confirming that $\tilde{\bm{\tau}}_2$ is a genuine measure of treatment 2
+performance **net of** treatment 1 performance.
+
+\newpage
+
+# The General OLS Framework
+
+## OLS Regression on Any Conditioning Set
+
+For treatment $j$ with conditioning set $A_j$ of size $a = |A_j|$, the
+design matrix is:
+
+$$
+\bm{X}_j = \bigl[\bm{1},\; \hat{\bm{\tau}}_{A_j}\bigr] \in \mathbb{R}^{n \times (1+a)}
+$$
+
+where $\hat{\bm{\tau}}_{A_j}$ is the $n \times a$ matrix of BLUEs for the
+$a$ conditioning treatments.  The OLS estimator is:
+
+$$
+\hat{\bm{\beta}}_j = \left(\bm{X}_j^\top\bm{X}_j\right)^{-1}\bm{X}_j^\top\hat{\bm{\tau}}_j
+\;\in\; \mathbb{R}^{1+a}
+$$
+
+with the intercept as the first element.  The hat-matrix annihilator is:
+
+$$
+\bar{\bm{H}}_j = \bm{I}_n - \bm{X}_j\left(\bm{X}_j^\top\bm{X}_j\right)^{-1}\bm{X}_j^\top
+$$
+
+The **response index** and its **variance--covariance matrix** are:
+
+$$
+\boxed{
+\tilde{\bm{\tau}}_j = \bar{\bm{H}}_j\,\hat{\bm{\tau}}_j,
+\qquad
+\text{Var}(\tilde{\bm{\tau}}_j) = \hat{\sigma}_j^2\,\bar{\bm{H}}_j,
+\qquad
+\hat{\sigma}_j^2 = \frac{\tilde{\bm{\tau}}_j^\top\tilde{\bm{\tau}}_j}{n - a - 1}
+}
+$$
+
+## Properties of the Decomposition
+
+Since $\bar{\bm{H}}_j\bm{X}_j = \bm{0}$, the response index satisfies:
+
+$$
+\tilde{\bm{\tau}}_j^\top\bm{1} = 0
+\qquad \text{(zero mean across genotypes)}
+$$
+
+$$
+\tilde{\bm{\tau}}_j^\top\hat{\bm{\tau}}_l = 0 \quad \forall\; T_l \in A_j
+\qquad \text{(orthogonal to all conditioning BLUEs)}
+$$
+
+These mirror exactly the properties of the responsiveness BLUPs in
+`randomRegressMV()`.  The key difference is that here the orthogonality
+holds with respect to the **observed conditioning BLUEs** rather than the
+**true genetic values** implied by the $\bm{G}$-matrix.
+
+## Rank and Degrees of Freedom
+
+The hat-matrix annihilator $\bar{\bm{H}}_j$ has rank $n - a - 1$, which
+equals the OLS degrees of freedom for the regression.  This gives a clean,
+self-contained $df_j = n - |A_j| - 1$ for each treatment's response index:
+
+| $|A_j|$ | $df_j$ | Scheme |
+|:-------:|:------:|:-------|
+| 1 | $n-2$ | Baseline (simple regression) |
+| 2 | $n-3$ | Sequential $T_3$, or partial $k=3$ |
+| $j-1$ | $n-j$ | Sequential $T_j$ |
+| $k-1$ | $n-k$ | Partial (all other treatments) |
+
+\newpage
+
+# The Four Conditioning Schemes
+
+## Baseline (`type = "baseline"`)
+
+Every non-first treatment $T_j$ ($j = 2,\ldots,k$) is regressed on
+$T_1$ **alone**:
+
+$$
+A_j = \{T_1\}, \quad j = 2,\ldots,k
+$$
+
+Each regression is a **simple regression** with $df_j = n - 2$ and a
+scalar regression coefficient:
+
+$$
+\hat{\beta}_j = \frac{\hat{\bm{\tau}}_j^\top\bar{\bm{P}}\hat{\bm{\tau}}_1}
+                     {\hat{\bm{\tau}}_1^\top\bar{\bm{P}}\hat{\bm{\tau}}_1},
+\qquad
+\bar{\bm{P}} = \bm{I} - \frac{\bm{1}\bm{1}^\top}{n}
+$$
+
+Response index variance: $\hat{\sigma}_j^2\bar{\bm{H}}_1$ with $df = n-2$.
+
+The response indices $\tilde{\bm{\tau}}_2, \ldots, \tilde{\bm{\tau}}_k$ are each
+orthogonal to $T_1$ BLUEs but are generally **not mutually orthogonal**.
+
+## Sequential (`type = "sequential"`)
+
+Treatment $T_j$ is regressed on **all preceding treatments**:
+
+$$
+A_j = \{T_1, T_2, \ldots, T_{j-1}\}, \quad j = 2,\ldots,k
+$$
+
+This is **Gram--Schmidt orthogonalisation** of the BLUE vectors.  By
+construction, the response index for $T_j$ is orthogonal to the BLUEs of
+all preceding treatments:
+
+$$
+\tilde{\bm{\tau}}_j^\top\hat{\bm{\tau}}_l = 0 \quad \forall\; l < j
+$$
+
+Furthermore, the response indices from **all treatments** are mutually
+uncorrelated:
+
+$$
+\tilde{\bm{\tau}}_i^\top\tilde{\bm{\tau}}_j = 0 \quad \forall\; i \neq j
+$$
+
+This last property follows because $\tilde{\bm{\tau}}_j$ lies in the
+orthogonal complement of $\text{span}\{\bm{1}, \hat{\bm{\tau}}_1, \ldots,
+\hat{\bm{\tau}}_{j-1}\}$, and $\tilde{\bm{\tau}}_i$ (for $i < j$) lies in
+this same span by construction.  The degrees of freedom decrease with
+treatment order: $df_j = n - j$.
+
+This is the OLS analogue of `TGmat` being diagonal in `randomRegressMV()`
+with `type = "sequential"`.
+
+## Partial (`type = "partial"`)
+
+Each treatment $T_j$ is regressed on **all other treatments simultaneously**:
+
+$$
+A_j = \{T_1, \ldots, T_k\} \setminus \{T_j\}, \quad j = 1,\ldots,k
+$$
+
+The OLS regression coefficient vector $\hat{\bm{\beta}}_j \in \mathbb{R}^{k-1}$
+gives the **partial regression coefficients** of $T_j$ on all other treatments,
+and the response index $\tilde{\bm{\tau}}_j$ measures the unique variation in
+$T_j$ BLUEs not linearly explained by any other treatment.
+
+All $k$ treatments receive a response index.  The degrees of freedom are
+$df_j = n - k$ for all $j$.  Response indices from different treatments are
+generally **not** mutually orthogonal (unlike the sequential scheme), though
+each is orthogonal to its own conditioning set.
+
+## Custom (`type = "custom"`)
+
+The `cond` argument accepts a named list specifying the exact conditioning
+set for each treatment.  Any acyclic structure is valid:
+
+```r
+cond = list(T0 = NULL,             # unconditional
+            T1 = "T0",             # T1 | T0  (simple regression)
+            T2 = c("T0", "T1"))    # T2 | {T0, T1}  (multiple regression)
+```
+
+This subsumes all other types as special cases and enables
+domain-driven conditioning hierarchies.
+
+\newpage
+
+# Variety Comparisons: Tukey's HSD
+
+## Residual Variance--Covariance Matrix
+
+The full $n \times n$ variance--covariance matrix of the response indices is:
+
+$$
+\text{Var}(\tilde{\bm{\tau}}_j) = \hat{\sigma}_j^2\,\bar{\bm{H}}_j
+$$
+
+The diagonal elements $[\hat{\sigma}_j^2\bar{\bm{H}}_j]_{ii} =
+\hat{\sigma}_j^2(1 - h_{ii})$ give the individual response-index
+variances, where $h_{ii} = [\bm{X}_j(\bm{X}_j^\top\bm{X}_j)^{-1}
+\bm{X}_j^\top]_{ii}$ is the leverage of genotype $i$.  Genotypes with high
+leverage (atypical BLUE values on the conditioning set) have
+**smaller** response-index variance.
+
+## Standard Error of the Difference
+
+For a pair of genotypes $i$ and $i'$, the squared SED of their response
+indices is:
+
+$$
+\text{SED}^2_{ii'j} = \hat{\sigma}_j^2\bigl([\bar{\bm{H}}_j]_{ii} +
+[\bar{\bm{H}}_j]_{i'i'} - 2[\bar{\bm{H}}_j]_{ii'}\bigr)
+$$
+
+In matrix notation, the full $n \times n$ matrix of squared SEDs is:
+
+$$
+\bm{S}_j = \bm{d}_j\bm{1}^\top + \bm{1}\bm{d}_j^\top
+- 2\,\hat{\sigma}_j^2\,\bar{\bm{H}}_j
+$$
+
+where $\bm{d}_j = \hat{\sigma}_j^2\,\operatorname{diag}(\bar{\bm{H}}_j)$.
+
+## Tukey's HSD
+
+The average SED across all $\binom{n}{2}$ pairs is:
+
+$$
+\overline{\text{SED}}_j = \frac{1}{\binom{n}{2}}
+\sum_{i < i'} \text{SED}_{ii'j}
+$$
+
+Tukey's HSD at the 5\% significance level is:
+
+$$
+\text{HSD}_j = \frac{\overline{\text{SED}}_j}{\sqrt{2}}
+\times q_{0.95}(n,\; df_j)
+$$
+
+where $df_j = n - |A_j| - 1$ and $q_{0.95}(n,\nu)$ is the upper 5\%
+critical value of the Studentised range distribution.  A difference between
+two genotype response indices exceeding $\text{HSD}_j$ is declared
+significant.
+
+\newpage
+
+# Relationship to `randomRegressMV()`
+
+The two functions implement the same four conditioning schemes and share the
+same `.condList()` helper, but differ fundamentally in what is being
+regressed and the source of the regression coefficients:
+
+| Quantity | `randomRegressMV()` | `fixedRegressMV()` |
+|:---------|:--------------------|:-------------------|
+| **Input** | BLUPs $\hat{\bm{u}}_j$ (random effects) | BLUEs $\hat{\bm{\tau}}_j$ (fixed effects) |
+| **Regression coefficients** | $\bm{\beta}_j = \bm{G}_{A_jA_j}^{-1}\bm{G}_{A_jj}$ (from $\bm{G}$-matrix) | $\hat{\bm{\beta}}_j = (\bm{X}_j^\top\bm{X}_j)^{-1}\bm{X}_j^\top\hat{\bm{\tau}}_j$ (OLS) |
+| **Response index** | $\tilde{u}_j = u_j - \bm{\beta}_j^\top\bm{u}_{A_j}$ | $\tilde{\bm{\tau}}_j = \bar{\bm{H}}_j\hat{\bm{\tau}}_j$ (OLS residuals) |
+| **Conditional variance** | $\sigma_{j|A_j}^2$ (Schur complement of $\bm{G}$) | $\hat{\sigma}_j^2$ (OLS residual mean square) |
+| **Variance matrix** | $\sigma_{j|A_j}^2\bm{I} - \text{PEV}$ or PEV | $\hat{\sigma}_j^2\bar{\bm{H}}_j$ |
+| **Degrees of freedom** | From PEV structure | $n - |A_j| - 1$ (exact) |
+| **Beta source** | Model-estimated genetic covariance | Data-estimated from observed BLUEs |
+| **Sequential $\bm{T}_G$** | Diagonal (exact) | Analogue: mutual orthogonality of residuals |
+| **FA models** | Supported (HSD = NA) | Not applicable (BLUEs only) |
+
+The key conceptual difference is that in `randomRegressMV()` the regression
+coefficient $\bm{\beta}_j$ is a **population-level genetic parameter** drawn
+from the model's covariance structure, constant across all varieties at a
+given site.  In `fixedRegressMV()`, $\hat{\bm{\beta}}_j$ is a
+**site-specific OLS estimate** computed from the observed BLUE vectors ---
+it changes from group to group and reflects the empirical relationship
+between treatment BLUEs in the data.
+
+\newpage
+
+# Implementation Notes
+
+## Algorithm
+
+\begin{enumerate}
+  \item \textbf{Build conditioning structure.}  \texttt{.condList()} maps
+        \texttt{type} (and \texttt{cond} for custom) to a named list of
+        conditioning sets.
+  \item \textbf{Get BLUEs.}  Call \texttt{predict(model, classify = term, ...)}
+        and remove missing observations.
+  \item \textbf{Identify variables.}  Parse \texttt{term} to locate the
+        treatment factor (containing \texttt{levs}) and the regression
+        variable (genotype); split by the \texttt{by} variable if supplied.
+  \item \textbf{Main loop} (one iteration per group):
+    \begin{enumerate}
+      \item Align BLUEs across all treatment levels to the set of common
+            genotypes; skip the group if fewer than \texttt{min\_obs} are
+            available.
+      \item For each conditioned treatment $T_j$ with set $A_j$:
+        \begin{enumerate}
+          \item Fit \texttt{lm(blues\_j $\sim$ blues\_Aj)} via OLS.
+          \item Compute $\bar{\bm{H}}_j = \bm{I} - \bm{X}_j
+                (\bm{X}_j^\top\bm{X}_j)^{-1}\bm{X}_j^\top$ using
+                \texttt{model.matrix()}.
+          \item Extract OLS residuals, residual SD, leverage-adjusted SE,
+                SED matrix, and Tukey HSD with $df = n - |A_j| - 1$.
+          \item Store OLS coefficients (excluding intercept) in \texttt{beta}.
+        \end{enumerate}
+    \end{enumerate}
+  \item \textbf{Assemble} output data frame and return.
+\end{enumerate}
+
+## Return Values
+
+| Element | Type | Description |
+|:--------|:-----|:------------|
+| `blues` | data frame | Group, Genotype, raw BLUEs, `resp.<lev>`, `se.<lev>`, `HSD.<lev>` |
+| `beta` | named list | `beta[["Tj"]]` — data frame with group column and OLS coefficients per conditioning treatment |
+| `sigmat` | matrix | $n_{\text{groups}} \times n_{\text{cond}}$ residual SDs $\hat{\sigma}_j$ |
+| `cond_list` | list | Resolved conditioning structure |
+| `type` | character | Scheme used |
+
+## Minimum Observations
+
+The default `min_obs` is $\max(5,\; 2(|A_j|_{\max} + 1))$, ensuring at
+least 3 residual degrees of freedom for the largest regression in the
+function.  Groups with fewer common genotypes are skipped with a warning.
+A collinearity warning is also issued if $\bm{X}_j^\top\bm{X}_j$ is
+near-singular.
+
+\newpage
+
+# Worked Numerical Example
+
+## Setup
+
+Consider a single group (one site) with five genotypes and three treatments.
+The BLUEs are:
+
+$$
+\hat{\bm{\tau}}_{T0} = \begin{pmatrix} 2.1 \\ 1.3 \\ 3.8 \\ 0.9 \\ 2.7 \end{pmatrix},
+\quad
+\hat{\bm{\tau}}_{T1} = \begin{pmatrix} 3.4 \\ 2.5 \\ 5.0 \\ 1.8 \\ 3.9 \end{pmatrix},
+\quad
+\hat{\bm{\tau}}_{T2} = \begin{pmatrix} 5.8 \\ 3.7 \\ 7.2 \\ 2.4 \\ 6.1 \end{pmatrix}
+$$
+
+with $n = 5$ genotypes.
+
+## Scheme 1: Baseline (`type = "baseline"`)
+
+**T1 $\mid$ T0** (simple regression, $df = 3$):
+
+$$
+\hat{\beta}_{1|0} = \frac{\sum_i (\hat{\tau}_{0i} - \bar{\tau}_0)(\hat{\tau}_{1i} - \bar{\tau}_1)}
+                         {\sum_i (\hat{\tau}_{0i} - \bar{\tau}_0)^2}
+= \frac{5.684}{5.312} = 1.070
+$$
+$$
+\hat{\alpha}_{1|0} = \bar{\tau}_1 - \hat{\beta}_{1|0}\bar{\tau}_0 = 3.320 - 1.070 \times 2.160 = 1.009
+$$
+$$
+\tilde{\bm{\tau}}_{T1} = \begin{pmatrix} 0.144 \\ 0.100 \\ -0.075 \\ -0.172 \\ 0.002 \end{pmatrix},
+\qquad
+\hat{\sigma}_{T1|T0}^2 = \frac{0.066}{3} = 0.022, \quad \hat{\sigma}_{T1|T0} = 0.148
+$$
+
+**Orthogonality check:**
+$\tilde{\bm{\tau}}_{T1}^\top\hat{\bm{\tau}}_{T0}
+= 0.144(2.1) + 0.100(1.3) + (-0.075)(3.8) + (-0.172)(0.9) + 0.002(2.7)
+= 0.302 + 0.130 - 0.285 - 0.155 + 0.005 \approx 0 \;\checkmark$
+
+**T2 $\mid$ T0** (simple regression, $df = 3$):
+
+$$
+\hat{\beta}_{2|0} = \frac{10.972}{5.312} = 2.065, \qquad \hat{\sigma}_{T2|T0} = 0.327
+$$
+
+## Scheme 2: Sequential (`type = "sequential"`)
+
+**T1 $\mid$ T0:** identical to baseline above.  $\hat{\sigma}_{T1|T0} = 0.148$.
+
+**T2 $\mid$ \{T0, T1\}** (multiple regression, $df = 2$):
+
+$$
+\bm{X}_2 = \bigl[\bm{1},\; \hat{\bm{\tau}}_{T0},\; \hat{\bm{\tau}}_{T1}\bigr]
+\in \mathbb{R}^{5 \times 3}
+$$
+
+$$
+\hat{\bm{\beta}}_{2|\{0,1\}} = \left(\bm{X}_2^\top\bm{X}_2\right)^{-1}
+\bm{X}_2^\top\hat{\bm{\tau}}_{T2}
+= \begin{pmatrix} \hat{\alpha} \\ \hat{\beta}_{T0} \\ \hat{\beta}_{T1} \end{pmatrix}
+= \begin{pmatrix} 0.028 \\ 1.346 \\ 0.747 \end{pmatrix}
+$$
+
+$$
+\tilde{\bm{\tau}}_{T2}^{\text{seq}}
+= \hat{\bm{\tau}}_{T2} - \hat{\bm{y}}_2
+= \begin{pmatrix} 0.070 \\ -0.081 \\ 0.025 \\ -0.031 \\ 0.016 \end{pmatrix},
+\qquad \hat{\sigma}_{T2|\{T0,T1\}} = 0.076
+$$
+
+**Mutual orthogonality check:**
+$(\tilde{\bm{\tau}}_{T2}^{\text{seq}})^\top\hat{\bm{\tau}}_{T0} \approx 0 \;\checkmark$
+$\quad$ and $\quad$
+$(\tilde{\bm{\tau}}_{T2}^{\text{seq}})^\top\hat{\bm{\tau}}_{T1} \approx 0 \;\checkmark$
+
+Note $\hat{\sigma}_{T2|\{T0,T1\}} = 0.076 < \hat{\sigma}_{T2|T0} = 0.327$:
+adding $T1$ as a predictor substantially reduces the residual variance.
+
+## Scheme 3: Partial (`type = "partial"`)
+
+All three treatments regressed on all others; $df = n - k = 2$ for each.
+
+**T0 $\mid$ \{T1, T2\}:**
+$$
+\hat{\bm{\beta}}_{0|\{1,2\}} = \begin{pmatrix} 0.653 \\ 0.118 \end{pmatrix},
+\qquad \hat{\sigma}_{T0|\{T1,T2\}} = 0.069
+$$
+
+**T1 $\mid$ \{T0, T2\}:**
+$$
+\hat{\bm{\beta}}_{1|\{0,2\}} = \begin{pmatrix} 0.746 \\ 0.098 \end{pmatrix},
+\qquad \hat{\sigma}_{T1|\{T0,T2\}} = 0.040
+$$
+
+**T2 $\mid$ \{T0, T1\}:** same conditioning set as sequential T2 step above;
+$\hat{\sigma}_{T2|\{T0,T1\}} = 0.076$.
+
+## Summary of Residual SDs Across Schemes
+
+| Scheme | $\hat{\sigma}_{T1}$ | $\hat{\sigma}_{T2}$ | $df_{T1}$ | $df_{T2}$ |
+|:-------|:-------------------:|:-------------------:|:---------:|:---------:|
+| Baseline | 0.148 | 0.327 | 3 | 3 |
+| Sequential | 0.148 | **0.076** | 3 | **2** |
+| Partial | 0.040 | 0.076 | **2** | **2** |
+
+The sequential and partial schemes yield smaller residual SDs for $T2$
+because the additional predictor ($T1$) removes shared variation.
+The partial scheme achieves the smallest $\hat{\sigma}_{T1}$ because it
+conditions on both $T0$ and $T2$ simultaneously.
+
+\newpage
+
+# Summary
+
+`fixedRegressMV()` provides a statistically coherent multi-treatment
+generalisation of the fixed-effects regression approach in `fixedRegress()`,
+using OLS regression of BLUEs to decompose variety performance into:
+
+\begin{enumerate}
+  \item \textbf{Raw performance} ($\hat{\tau}_j$): the BLUE of each treatment.
+  \item \textbf{Response index} ($\tilde{\bm{\tau}}_j = \bar{\bm{H}}_j
+        \hat{\bm{\tau}}_j$): the OLS residual of treatment $j$ after
+        regressing on the conditioning set $A_j$, measuring performance net
+        of the conditioning treatments.
+\end{enumerate}
+
+The four conditioning schemes --- `"baseline"`, `"sequential"`,
+`"partial"`, and `"custom"` --- provide a spectrum of decompositions with
+the same interpretation as in `randomRegressMV()` but driven entirely by the
+observed BLUE vectors rather than a modelled genetic covariance structure.
+The hat-matrix annihilator $\bar{\bm{H}}_j$ is the central object: it is
+symmetric and idempotent, provides the exact residual variance--covariance
+matrix $\hat{\sigma}_j^2\bar{\bm{H}}_j$, and gives clean degrees of freedom
+$n - |A_j| - 1$ for each regression.
+
+\bigskip
+\noindent\rule{\textwidth}{0.4pt}
+\begin{center}
+\textit{BioMaid R package} \quad|\quad
+\texttt{fixedRegressMV()} \quad|\quad
+\textit{`r format(Sys.Date(), "%Y")`}
+\end{center}
