@@ -4,8 +4,8 @@
 [![Codecov](https://codecov.io/gh/DrJ001/bioMaid/graph/badge.svg)](https://codecov.io/gh/DrJ001/bioMaid)
 [![R >= 4.1](https://img.shields.io/badge/R-%3E%3D4.1-blue)](https://cran.r-project.org/)
 
-Biometric tools for analysing multi-environment plant breeding trials fitted
-with **ASReml-R V4** mixed models.
+Biometric tools to support the analysis of comparative experiment data fitted
+with **ASReml-R V4** mixed models. Hold tight theer a lot more tools coming.
 
 ---
 
@@ -29,7 +29,7 @@ remotes::install_github("DrJ001/bioMaid")
 ### `compare()` — Pairwise comparison criteria
 
 Computes **HSD**, **LSD**, or **Bonferroni**-corrected LSD for predicted values
-from an ASReml-R model, optionally within subgroups.
+from an ASReml-R V4 model, optionally within subgroups.
 
 ```r
 # Tukey HSD for Genotype within each Site
@@ -46,17 +46,15 @@ absolute difference exceeds the returned criterion value.
 
 ### `waldTest()` — Wald / F-tests on contrasts
 
-Tests linear contrasts of predicted values using the prediction error
-variance-covariance matrix. Supports pairwise, custom, and joint zero tests
+Tests linear contrasts of predicted values using predicted information from
+`predict.asreml()`. Supports pairwise, custom, and joint zero tests
 with optional p-value adjustment.
 
 ```r
 pred <- predict(model, classify = "Treatment", vcov = TRUE)
 
 waldTest(pred,
-         cc     = list(list(coef = c("N0","N1","N2"),
-                            type = "con",
-                            comp = "pairwise")),
+         cc     = list(list(coef = c("N0","N1","N2"), type = "con", comp = "pairwise")),
          test   = "F",
          adjust = "fdr",
          df_error = model$nedf)
@@ -66,8 +64,10 @@ waldTest(pred,
 
 ### `randomRegressMV()` — Random regression (BLUP-based)
 
-Decomposes variety BLUPs into **efficiency** and **responsiveness** components
-using the G-matrix from an ASReml-R model. Supports four conditioning schemes.
+Decomposes Genotype x Environment x (Treatment/Trait) variety BLUP result from
+an ASReml-R v4 model to generate **responsiveness (or tolerance) indices** using
+a natural genetic regression that forms from Gaussian conditional distribution
+theory. Supports four conditioning schemes.
 
 | `type` | Description |
 |--------|-------------|
@@ -92,7 +92,7 @@ res$beta     # Site-specific regression coefficients
 ### `fixedRegressMV()` — Fixed regression (BLUE-based)
 
 The fixed-effects analogue of `randomRegressMV()`. Regresses treatment BLUEs
-via OLS within each group and returns **response indices** (residuals) for
+via OLS within each group and returns **response or tolerance indices** for
 every genotype. The same four conditioning schemes are available.
 
 ```r
