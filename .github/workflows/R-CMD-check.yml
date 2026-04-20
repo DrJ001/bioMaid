@@ -39,6 +39,7 @@ jobs:
 
       - name: Install dependencies and check
         run: |
+          update.packages(ask = FALSE, checkBuilt = TRUE)
           install.packages(c("remotes", "rcmdcheck", "testthat", "devtools", "covr", "xml2"))
           remotes::install_deps(
             pkgdir       = ".",
