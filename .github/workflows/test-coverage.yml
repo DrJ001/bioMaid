@@ -20,10 +20,15 @@ jobs:
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::covr, any::xml2, any::testthat
-          dependencies: 'FALSE'
+      - name: Install dependencies
+        run: |
+          install.packages(c("remotes", "covr", "xml2", "testthat"), repos = "https://cloud.r-project.org")
+          remotes::install_deps(
+            pkgdir       = ".",
+            dependencies = c("Depends", "Imports", "LinkingTo"),
+            repos        = "https://cloud.r-project.org"
+          )
+        shell: Rscript {0}
 
       - name: Test coverage
         run: |
