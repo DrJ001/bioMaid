@@ -37,12 +37,15 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      # RSPM has no binaries for R-devel; setup-r@v2 falls back to restoring
-      # release-compiled binaries whose .so files use removed R internals.
-      # Delete the entire temp library so R cannot load stale binaries.
+      # RSPM has no binaries for R-devel; setup-r@v2 restores release-compiled
+      # binaries whose .so files reference removed R internals (e.g. SETLENGTH).
+      # Clear the cached contents but recreate the directory so R still has a
+      # writable library to install fresh compatible packages into.
       - name: Clear setup-r temp library on Linux
         if: runner.os == 'Linux'
-        run: rm -rf "${RUNNER_TEMP}/Library"
+        run: |
+          rm -rf "${RUNNER_TEMP}/Library"
+          mkdir -p "${RUNNER_TEMP}/Library"
         shell: bash
 
       - name: Install dependencies and check
