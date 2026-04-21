@@ -12,6 +12,7 @@ padTrial(
   pad = TRUE,
   keep = split,
   fill_value = "Blank",
+  type_col = "Type",
   verbose = FALSE
 )
 }
@@ -22,33 +23,38 @@ padTrial(
 spatial coordinate columns (rows and columns of the field grid).
 Default \code{"Row:Column"}.}
 
-\item{match}{Character vector of \code{Type} values that define the target
-sub-trial (e.g. test lines). The bounding box is computed from these
-plots only. Default \code{"DH"}.}
+\item{match}{Character vector of values in \code{type_col} that define the
+target sub-trial (e.g. test lines). The bounding box is computed from
+these plots only. Default \code{"DH"}.}
 
-\item{split}{Name of the blocking/grouping column. Extraction and padding
-are performed independently within each level. Default \code{"Block"}.}
+\item{split}{Character vector of one or more column names used to define
+independent groups (blocks) for extraction and padding. Pass \code{NULL} to
+treat the entire dataset as a single block. Default \code{"Block"}.}
 
 \item{pad}{Logical. If \code{TRUE} (default), missing grid cells within the
-bounding box are inserted as \code{NA} rows.}
+bounding box are inserted as placeholder rows.}
 
 \item{keep}{Character vector of column names whose values should be
-carried into the padding rows (must be constant within each block).
-Defaults to \code{split}, which preserves the block identifier.}
+carried into the padding rows (must be constant within each group).
+Defaults to \code{split}. Ignored when \code{split = NULL}.}
 
 \item{fill_value}{Character string written into every character or factor
 column of the padding rows, except for columns named in \code{keep} and the
 two spatial coordinate columns. Numeric columns always remain \code{NA}.
 Default \code{"Blank"}.}
 
-\item{verbose}{Logical. If \code{TRUE}, prints a per-block message reporting the
+\item{type_col}{Name of the column in \code{data} that identifies plot types
+(e.g. \code{"DH"}, \code{"Check"}, \code{"Guard"}). Default \code{"Type"}.}
+
+\item{verbose}{Logical. If \code{TRUE}, prints a per-group message reporting the
 detected bounding box and the number of cells padded. Default \code{FALSE}.}
 }
 \value{
 A data frame with the same columns as \code{data} plus an \code{add} column
 (\code{"old"} / \code{"new"}), ordered by the first then second spatial coordinate.
-Row and Column factors are re-levelled in ascending numeric order across
-the combined output.
+The spatial coordinate columns are re-levelled as factors in ascending
+numeric order across the combined output. When multiple \code{split} columns
+are supplied the temporary grouping key column is dropped before returning.
 }
 \description{
 Given a field trial data frame that mixes multiple plot types (e.g. test
@@ -56,8 +62,10 @@ lines, checks, guard rows), \code{padTrial()} extracts the rectangular sub-trial
 occupied by a target plot type and, optionally, inserts placeholder rows for
 any missing grid positions within that rectangle.
 
-\strong{Steps performed per block:}
+\strong{Steps performed per group (block):}
 \enumerate{
+\item Check for duplicate Row × Column positions and stop with an
+informative error if any are found.
 \item Identify the bounding box (min/max of the two spatial coordinates)
 for all plots matching \code{match}.
 \item Subset the data to that bounding rectangle (dropping checks and
@@ -73,13 +81,22 @@ original rows and \code{"new"} for inserted padding rows.
 }
 \examples{
 \dontrun{
-# See scratch/demo_padTrial.R for a worked example
+# Single blocking column
 result <- padTrial(trial_df,
                    pattern    = "Row:Column",
                    match      = "DH",
                    split      = "Block",
                    fill_value = "Blank",
                    verbose    = TRUE)
+
+# No blocking -- treat whole dataset as one group
+result <- padTrial(trial_df, split = NULL)
+
+# Multi-environment: process each Site x Block independently
+result <- padTrial(trial_df, split = c("Site", "Block"))
+
+# Custom type column name
+result <- padTrial(trial_df, type_col = "PlotType", match = "Line")
 
 table(result$add)             # count original vs padded rows
 subset(result, add == "new")  # inspect the inserted blank plots
