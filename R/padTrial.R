@@ -3,8 +3,8 @@
 #' @description
 #' Given a field trial data frame that mixes multiple plot types (e.g. test
 #' lines, checks, guard rows), `padTrial()` extracts the rectangular sub-trial
-#' occupied by a target plot type and, optionally, inserts `NA` rows for any
-#' missing grid positions within that rectangle.
+#' occupied by a target plot type and, optionally, inserts placeholder rows for
+#' any missing grid positions within that rectangle.
 #'
 #' **Steps performed per block:**
 #' \enumerate{
@@ -13,9 +13,9 @@
 #'   \item Subset the data to that bounding rectangle (dropping checks and
 #'         guards that fall outside it).
 #'   \item If `pad = TRUE`, detect any Row × Column cells that are absent
-#'         within the bounding box and insert `NA` placeholder rows for them,
-#'         carrying identifier columns specified in `keep` and optionally
-#'         setting a `fill` column to `"Blank"`.
+#'         within the bounding box and insert placeholder rows for them,
+#'         carrying identifier columns specified in `keep` and writing
+#'         `fill_value` into every other character or factor column.
 #' }
 #'
 #' An `add` column is appended to the result, taking the value `"old"` for
@@ -32,12 +32,13 @@
 #'   are performed independently within each level. Default `"Block"`.
 #' @param pad     Logical. If `TRUE` (default), missing grid cells within the
 #'   bounding box are inserted as `NA` rows.
-#' @param keep    Character vector of column names whose values should be
+#' @param keep       Character vector of column names whose values should be
 #'   carried into the padding rows (must be constant within each block).
 #'   Defaults to `split`, which preserves the block identifier.
-#' @param fill    Character name of a single column to set to `"Blank"` in
-#'   padding rows (e.g. the variety or plot-type column). `NULL` (default)
-#'   leaves the column as `NA`.
+#' @param fill_value Character string written into every character or factor
+#'   column of the padding rows, except for columns named in `keep` and the
+#'   two spatial coordinate columns. Numeric columns always remain `NA`.
+#'   Default `"Blank"`.
 #' @param verbose Logical. If `TRUE`, prints a per-block message reporting the
 #'   detected bounding box and the number of cells padded. Default `FALSE`.
 #'
@@ -50,25 +51,25 @@
 #' \dontrun{
 #' # See scratch/demo_padTrial.R for a worked example
 #' result <- padTrial(trial_df,
-#'                    pattern = "Row:Column",
-#'                    match   = "DH",
-#'                    split   = "Block",
-#'                    fill    = "Variety",
-#'                    verbose = TRUE)
+#'                    pattern    = "Row:Column",
+#'                    match      = "DH",
+#'                    split      = "Block",
+#'                    fill_value = "Blank",
+#'                    verbose    = TRUE)
 #'
-#' table(result$add)          # count original vs padded rows
+#' table(result$add)             # count original vs padded rows
 #' subset(result, add == "new")  # inspect the inserted blank plots
 #' }
 #'
 #' @export
 padTrial <- function(data,
-                     pattern = "Row:Column",
-                     match   = "DH",
-                     split   = "Block",
-                     pad     = TRUE,
-                     keep    = split,
-                     fill    = NULL,
-                     verbose = FALSE) {
+                     pattern    = "Row:Column",
+                     match      = "DH",
+                     split      = "Block",
+                     pad        = TRUE,
+                     keep       = split,
+                     fill_value = "Blank",
+                     verbose    = FALSE) {
 
   # ---- Input validation --------------------------------------------------
   pat <- unlist(strsplit(pattern, ":", fixed = TRUE))
@@ -86,8 +87,8 @@ padTrial <- function(data,
     stop("'keep' column(s) not found in data: ",
          paste(setdiff(keep, names(data)), collapse = ", "), ".")
 
-  if (!is.null(fill) && !(fill %in% names(data)))
-    stop("'fill' column \"", fill, "\" not found in data.")
+  if (!is.character(fill_value) || length(fill_value) != 1L)
+    stop("'fill_value' must be a single character string.")
 
   if (!"Type" %in% names(data))
     stop("A 'Type' column is required to identify plot types via 'match'.")
@@ -176,9 +177,19 @@ padTrial <- function(data,
     tp[[pat[1]]] <- factor(rownames(tabs)[missing[, 1L]])
     tp[[pat[2]]] <- factor(colnames(tabs)[missing[, 2L]])
 
-    # Optionally label padded rows in the fill column
-    if (!is.null(fill))
-      tp[[fill]] <- "Blank"
+    # Fill all character/factor columns that are not keep or spatial coords
+    fill_cols <- setdiff(
+      names(tp)[vapply(tp, function(col) is.character(col) || is.factor(col),
+                       logical(1L))],
+      c(keep, pat, "add")
+    )
+    for (fc in fill_cols)
+      tp[[fc]] <- if (is.factor(tp[[fc]])) {
+        factor(rep(fill_value, n_pad),
+               levels = union(levels(tp[[fc]]), fill_value))
+      } else {
+        rep(fill_value, n_pad)
+      }
 
     tp$add      <- "new"
     rownames(tp) <- NULL

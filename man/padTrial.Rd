@@ -11,7 +11,7 @@ padTrial(
   split = "Block",
   pad = TRUE,
   keep = split,
-  fill = NULL,
+  fill_value = "Blank",
   verbose = FALSE
 )
 }
@@ -36,9 +36,10 @@ bounding box are inserted as \code{NA} rows.}
 carried into the padding rows (must be constant within each block).
 Defaults to \code{split}, which preserves the block identifier.}
 
-\item{fill}{Character name of a single column to set to \code{"Blank"} in
-padding rows (e.g. the variety or plot-type column). \code{NULL} (default)
-leaves the column as \code{NA}.}
+\item{fill_value}{Character string written into every character or factor
+column of the padding rows, except for columns named in \code{keep} and the
+two spatial coordinate columns. Numeric columns always remain \code{NA}.
+Default \code{"Blank"}.}
 
 \item{verbose}{Logical. If \code{TRUE}, prints a per-block message reporting the
 detected bounding box and the number of cells padded. Default \code{FALSE}.}
@@ -52,8 +53,8 @@ the combined output.
 \description{
 Given a field trial data frame that mixes multiple plot types (e.g. test
 lines, checks, guard rows), \code{padTrial()} extracts the rectangular sub-trial
-occupied by a target plot type and, optionally, inserts \code{NA} rows for any
-missing grid positions within that rectangle.
+occupied by a target plot type and, optionally, inserts placeholder rows for
+any missing grid positions within that rectangle.
 
 \strong{Steps performed per block:}
 \enumerate{
@@ -62,9 +63,9 @@ for all plots matching \code{match}.
 \item Subset the data to that bounding rectangle (dropping checks and
 guards that fall outside it).
 \item If \code{pad = TRUE}, detect any Row × Column cells that are absent
-within the bounding box and insert \code{NA} placeholder rows for them,
-carrying identifier columns specified in \code{keep} and optionally
-setting a \code{fill} column to \code{"Blank"}.
+within the bounding box and insert placeholder rows for them,
+carrying identifier columns specified in \code{keep} and writing
+\code{fill_value} into every other character or factor column.
 }
 
 An \code{add} column is appended to the result, taking the value \code{"old"} for
@@ -74,13 +75,13 @@ original rows and \code{"new"} for inserted padding rows.
 \dontrun{
 # See scratch/demo_padTrial.R for a worked example
 result <- padTrial(trial_df,
-                   pattern = "Row:Column",
-                   match   = "DH",
-                   split   = "Block",
-                   fill    = "Variety",
-                   verbose = TRUE)
+                   pattern    = "Row:Column",
+                   match      = "DH",
+                   split      = "Block",
+                   fill_value = "Blank",
+                   verbose    = TRUE)
 
-table(result$add)          # count original vs padded rows
+table(result$add)             # count original vs padded rows
 subset(result, add == "new")  # inspect the inserted blank plots
 }
 
