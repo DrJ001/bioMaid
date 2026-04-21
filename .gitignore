@@ -25,3 +25,6 @@ Thumbs.db
 .\#*
 *.swp
 *.swo
+
+# Scratch folder — exploratory scripts, never bundled into the package
+scratch/
