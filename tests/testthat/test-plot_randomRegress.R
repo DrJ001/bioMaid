@@ -208,3 +208,29 @@ test_that("custom theme is applied without error", {
     "ggplot"
   )
 })
+
+test_that("centre = TRUE returns ggplot for regress and quadrant", {
+  res <- make_mock_res()
+  for (tp in c("regress", "quadrant"))
+    expect_s3_class(
+      plot_randomRegress(res, type = tp, centre = TRUE), "ggplot"
+    )
+})
+
+test_that("centre = TRUE shifts x values by adding site mean", {
+  res    <- make_mock_res(ns = 3L, nvar = 8L)
+  df_raw <- plot_randomRegress(res, type = "quadrant",
+                               centre = FALSE, return_data = TRUE)
+  df_cen <- plot_randomRegress(res, type = "quadrant",
+                               centre = TRUE,  return_data = TRUE)
+  # After adding site mean, x should differ from raw by the mean per site
+  site_shifts <- ave(df_raw$x, df_raw$Site, FUN = mean)
+  expect_equal(df_cen$x, df_raw$x + site_shifts, tolerance = 1e-9)
+})
+
+test_that("invalid centre value gives informative error", {
+  expect_error(
+    plot_randomRegress(make_mock_res(), centre = "yes"),
+    regexp = "logical"
+  )
+})

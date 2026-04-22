@@ -9,6 +9,7 @@ plot_fixedRegress(
   type = c("regress", "quadrant"),
   treatments = NULL,
   highlight = "default",
+  centre = TRUE,
   theme = ggplot2::theme_bw(),
   return_data = FALSE,
   ...
@@ -31,6 +32,13 @@ polar-angle algorithm (3 top-right, 3 bottom-left).}
 \item{\code{NULL}}{No highlighting.}
 }
 Default is \code{"default"}.}
+
+\item{centre}{Logical.  If \code{TRUE} (default), within-group means are
+subtracted from the x-axis (unconditional treatment BLUE) and, for
+\code{type = "regress"}, also from the y-axis.  This removes the treatment
+fixed-effect mean so that the zero reference lines fall within the data
+and the quadrant concept is meaningful.  Set to \code{FALSE} to display raw
+BLUEs including the treatment mean.}
 
 \item{theme}{A complete ggplot2 theme object. Default
 \code{\link[ggplot2:ggtheme]{ggplot2::theme_bw()}}.}

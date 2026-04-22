@@ -6,7 +6,7 @@
 # ---- Data preparation helpers ------------------------------------------
 
 #' @noRd
-.rreg_regress_data <- function(res, treatments) {
+.rreg_regress_data <- function(res, treatments, centre) {
 
   blups       <- res$blups
   cond_list   <- res$cond_list
@@ -22,7 +22,7 @@
     cond_lv <- A_j[1L]
     beta_j  <- res$beta[[lv_j]]          # ns x |A_j|, rownames = sites
     site_beta <- setNames(beta_j[, cond_lv], rownames(beta_j))
-    data.frame(
+    df <- data.frame(
       Site       = blups$Site,
       Variety    = blups$Variety,
       x          = blups[[cond_lv]],
@@ -31,12 +31,17 @@
       beta       = site_beta[as.character(blups$Site)],
       stringsAsFactors = FALSE
     )
+    if (centre) {
+      df$x <- df$x + ave(df$x, df$Site, FUN = mean)
+      df$y <- df$y + ave(df$y, df$Site, FUN = mean)
+    }
+    df
   })
   do.call(rbind, rows)
 }
 
 #' @noRd
-.rreg_quadrant_data <- function(res, treatments) {
+.rreg_quadrant_data <- function(res, treatments, centre) {
 
   blups       <- res$blups
   cond_list   <- res$cond_list
@@ -54,7 +59,7 @@
     if (!(resp_col %in% names(blups)))
       stop("Column '", resp_col, "' not found in res$blups.")
     cond_lv <- cond_list[[lv_j]][1L]
-    data.frame(
+    df <- data.frame(
       Site       = blups$Site,
       Variety    = blups$Variety,
       x          = blups[[eff_lv]],
@@ -62,6 +67,9 @@
       pair_label = paste0(lv_j, " | ", cond_lv),
       stringsAsFactors = FALSE
     )
+    if (centre)
+      df$x <- df$x + ave(df$x, df$Site, FUN = mean)
+    df
   })
   do.call(rbind, rows)
 }
@@ -203,12 +211,12 @@
 # ---- Plot builders -------------------------------------------------------
 
 #' @noRd
-.rreg_plot_regress <- function(df, hl, theme, ...) {
+.rreg_plot_regress <- function(df, hl, centre, theme, ...) {
 
   panel_df <- unique(df[, c("pair_label", "Site", "beta")])
   panel_df$beta_label <- paste0("\u03b2 = ", round(panel_df$beta, 2L))
 
-  base_col <- if (is.null(hl)) "#4E79A7" else "grey78"
+  base_col <- if (is.null(hl)) "#4E79A7" else "grey50"
 
   p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y)) +
     ggplot2::geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey70") +
@@ -229,8 +237,10 @@
     ) +
     ggplot2::facet_grid(pair_label ~ Site, scales = "free") +
     ggplot2::labs(
-      x       = "Conditioning treatment BLUP",
-      y       = "Conditioned treatment BLUP",
+      x       = if (centre) "Conditioning BLUP (+ site mean)" else
+                             "Conditioning treatment BLUP",
+      y       = if (centre) "Conditioned BLUP (+ site mean)"  else
+                             "Conditioned treatment BLUP",
       caption = "Dotted line: site-specific random regression"
     ) +
     theme +
@@ -244,9 +254,9 @@
 }
 
 #' @noRd
-.rreg_plot_quadrant <- function(df, hl, theme, ...) {
+.rreg_plot_quadrant <- function(df, hl, centre, theme, ...) {
 
-  base_col <- if (is.null(hl)) "#E15759" else "grey78"
+  base_col <- if (is.null(hl)) "#E15759" else "grey50"
 
   p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y)) +
     ggplot2::geom_hline(yintercept = 0, linetype = "dotted",
@@ -257,7 +267,8 @@
     .rreg_highlight_layers(df, hl) +
     ggplot2::facet_grid(pair_label ~ Site, scales = "free") +
     ggplot2::labs(
-      x       = "Efficiency (unconditional BLUP)",
+      x       = if (centre) "Efficiency (BLUP + site mean)" else
+                             "Efficiency (unconditional BLUP)",
       y       = "Responsiveness (conditional BLUP)",
       caption = "Dotted lines at zero divide each panel into four quadrants"
     ) +
@@ -342,6 +353,14 @@
 #' @param treatments  Character vector restricting which conditioned treatments
 #'   are included in the plot.  `NULL` (default) includes all conditioned
 #'   treatments.  Ignored for `type = "gmat"`.
+#' @param centre      Logical.  If `FALSE` (default), BLUPs are plotted on
+#'   their natural scale (already centred near zero by the mixed model).
+#'   If `TRUE`, the within-site mean of the unconditional treatment is added
+#'   back to the x-axis values, placing BLUPs on an approximate absolute
+#'   yield scale.  For true ASReml BLUPs the site mean is effectively zero
+#'   so the change is minimal; this option is mainly useful when BLUPs have
+#'   been computed from treatment means (e.g. in the demo).
+#'   Ignored for `type = "gmat"`.
 #' @param highlight   Controls variety annotation for `"regress"` and
 #'   `"quadrant"` plots. One of:
 #'   \describe{
@@ -390,6 +409,7 @@ plot_randomRegress <- function(res,
                                type        = c("regress", "quadrant", "gmat"),
                                treatments  = NULL,
                                highlight   = "default",
+                               centre      = FALSE,
                                theme       = ggplot2::theme_bw(),
                                return_data = FALSE,
                                ...) {
@@ -410,10 +430,13 @@ plot_randomRegress <- function(res,
   if (!inherits(theme, "theme"))
     stop("'theme' must be a ggplot2 theme object, e.g. ggplot2::theme_bw().")
 
+  if (!is.logical(centre) || length(centre) != 1L)
+    stop("'centre' must be a single logical value (TRUE or FALSE).")
+
   # ---- Build tidy data ---------------------------------------------------
   df <- switch(type,
-    regress  = .rreg_regress_data( res, treatments),
-    quadrant = .rreg_quadrant_data(res, treatments),
+    regress  = .rreg_regress_data( res, treatments, centre),
+    quadrant = .rreg_quadrant_data(res, treatments, centre),
     gmat     = .rreg_gmat_data(    res)
   )
 
@@ -425,7 +448,7 @@ plot_randomRegress <- function(res,
     if (identical(highlight, "default")) {
       # Always derive highlights from quadrant space
       qdata <- if (type == "quadrant") df else
-                 .rreg_quadrant_data(res, treatments)
+                 .rreg_quadrant_data(res, treatments, centre)
       hl    <- .rreg_default_highlights(qdata)
     } else if (is.character(highlight) && length(highlight) > 0L) {
       all_vars <- unique(as.character(df$Variety))
@@ -443,8 +466,8 @@ plot_randomRegress <- function(res,
 
   # ---- Build plot --------------------------------------------------------
   switch(type,
-    regress  = .rreg_plot_regress( df, hl, theme, ...),
-    quadrant = .rreg_plot_quadrant(df, hl, theme, ...),
-    gmat     = .rreg_plot_gmat(    df,     theme, ...)
+    regress  = .rreg_plot_regress( df, hl, centre, theme, ...),
+    quadrant = .rreg_plot_quadrant(df, hl, centre, theme, ...),
+    gmat     = .rreg_plot_gmat(    df,             theme, ...)
   )
 }

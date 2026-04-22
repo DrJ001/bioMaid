@@ -9,6 +9,7 @@ plot_randomRegress(
   type = c("regress", "quadrant", "gmat"),
   treatments = NULL,
   highlight = "default",
+  centre = FALSE,
   theme = ggplot2::theme_bw(),
   return_data = FALSE,
   ...
@@ -33,6 +34,15 @@ treatments.  Ignored for \code{type = "gmat"}.}
 \item{\code{NULL}}{No highlighting; all points drawn in a single colour.}
 }
 Default is \code{"default"}.  Ignored for \code{type = "gmat"}.}
+
+\item{centre}{Logical.  If \code{FALSE} (default), BLUPs are plotted on
+their natural scale (already centred near zero by the mixed model).
+If \code{TRUE}, the within-site mean of the unconditional treatment is added
+back to the x-axis values, placing BLUPs on an approximate absolute
+yield scale.  For true ASReml BLUPs the site mean is effectively zero
+so the change is minimal; this option is mainly useful when BLUPs have
+been computed from treatment means (e.g. in the demo).
+Ignored for \code{type = "gmat"}.}
 
 \item{theme}{A complete ggplot2 theme object. Default
 \code{\link[ggplot2:ggtheme]{ggplot2::theme_bw()}}.}

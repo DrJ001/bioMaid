@@ -26,7 +26,7 @@
 # ---- Data preparation helpers ------------------------------------------
 
 #' @noRd
-.freg_regress_data <- function(res, treatments) {
+.freg_regress_data <- function(res, treatments, centre) {
 
   blues     <- res$blues
   cond_list <- res$cond_list
@@ -71,15 +71,24 @@
       )
     }))
 
-    merge(df, grp_stats[, c("Group", "pair_label", "intercept")],
-          by = c("Group", "pair_label"), all.x = TRUE)
+    out <- merge(df, grp_stats[, c("Group", "pair_label", "intercept")],
+                 by = c("Group", "pair_label"), all.x = TRUE)
+
+    if (centre) {
+      # Subtract within-group means from both axes.
+      # beta (slope) is invariant to location shifts; intercept becomes 0.
+      out$x         <- out$x - ave(out$x, out$Group, FUN = mean)
+      out$y         <- out$y - ave(out$y, out$Group, FUN = mean)
+      out$intercept <- 0
+    }
+    out
   })
 
   do.call(rbind, rows)
 }
 
 #' @noRd
-.freg_quadrant_data <- function(res, treatments) {
+.freg_quadrant_data <- function(res, treatments, centre) {
 
   blues     <- res$blues
   cond_list <- res$cond_list
@@ -101,7 +110,7 @@
       stop("Column '", resp_col, "' not found in res$blues.")
     cond_lv <- cond_list[[lv_j]][1L]
 
-    data.frame(
+    df <- data.frame(
       Group      = as.character(blues[[grp_col]]),
       Genotype   = as.character(blues[[geno_col]]),
       x          = blues[[eff_lv]],
@@ -109,6 +118,11 @@
       pair_label = paste0(lv_j, " | ", cond_lv),
       stringsAsFactors = FALSE
     )
+
+    if (centre)
+      df$x <- df$x - ave(df$x, df$Group, FUN = mean)
+
+    df
   })
 
   do.call(rbind, rows)
@@ -215,7 +229,7 @@
 # ---- Plot builders -------------------------------------------------------
 
 #' @noRd
-.freg_plot_regress <- function(df, hl, theme, ...) {
+.freg_plot_regress <- function(df, hl, centre, theme, ...) {
 
   # One row per Group x pair_label panel for ablines and beta annotation
   panel_df <- unique(df[, c("pair_label", "Group", "beta", "intercept")])
@@ -242,8 +256,10 @@
     ) +
     ggplot2::facet_grid(pair_label ~ Group, scales = "free") +
     ggplot2::labs(
-      x       = "Conditioning treatment BLUE",
-      y       = "Conditioned treatment BLUE",
+      x       = if (centre) "Conditioning BLUE (centred)" else
+                             "Conditioning treatment BLUE",
+      y       = if (centre) "Conditioned BLUE (centred)"  else
+                             "Conditioned treatment BLUE",
       caption = "Dotted line: OLS regression within group"
     ) +
     theme +
@@ -257,7 +273,7 @@
 }
 
 #' @noRd
-.freg_plot_quadrant <- function(df, hl, theme, ...) {
+.freg_plot_quadrant <- function(df, hl, centre, theme, ...) {
 
   base_col <- if (is.null(hl)) "#E15759" else "grey78"
 
@@ -270,7 +286,8 @@
     .freg_highlight_layers(df, hl) +
     ggplot2::facet_grid(pair_label ~ Group, scales = "free") +
     ggplot2::labs(
-      x       = "Efficiency (unconditional BLUE)",
+      x       = if (centre) "Efficiency (centred BLUE)" else
+                             "Efficiency (unconditional BLUE)",
       y       = "Response index (OLS residual)",
       caption = "Dotted lines at zero divide each panel into four quadrants"
     ) +
@@ -327,6 +344,12 @@
 #'   `"regress"` (default) or `"quadrant"`.
 #' @param treatments  Character vector restricting which conditioned treatments
 #'   are included.  `NULL` (default) includes all conditioned treatments.
+#' @param centre      Logical.  If `TRUE` (default), within-group means are
+#'   subtracted from the x-axis (unconditional treatment BLUE) and, for
+#'   `type = "regress"`, also from the y-axis.  This removes the treatment
+#'   fixed-effect mean so that the zero reference lines fall within the data
+#'   and the quadrant concept is meaningful.  Set to `FALSE` to display raw
+#'   BLUEs including the treatment mean.
 #' @param highlight   Controls genotype annotation. One of:
 #'   \describe{
 #'     \item{`"default"`}{Automatically selects 6 genotypes using the
@@ -374,6 +397,7 @@ plot_fixedRegress <- function(res,
                               type        = c("regress", "quadrant"),
                               treatments  = NULL,
                               highlight   = "default",
+                              centre      = TRUE,
                               theme       = ggplot2::theme_bw(),
                               return_data = FALSE,
                               ...) {
@@ -394,10 +418,13 @@ plot_fixedRegress <- function(res,
   if (!inherits(theme, "theme"))
     stop("'theme' must be a ggplot2 theme object, e.g. ggplot2::theme_bw().")
 
+  if (!is.logical(centre) || length(centre) != 1L)
+    stop("'centre' must be a single logical value (TRUE or FALSE).")
+
   # ---- Build tidy data ---------------------------------------------------
   df <- switch(type,
-    regress  = .freg_regress_data( res, treatments),
-    quadrant = .freg_quadrant_data(res, treatments)
+    regress  = .freg_regress_data( res, treatments, centre),
+    quadrant = .freg_quadrant_data(res, treatments, centre)
   )
 
   if (return_data) return(df)
@@ -406,7 +433,7 @@ plot_fixedRegress <- function(res,
   hl <- NULL
   if (identical(highlight, "default")) {
     qdata <- if (type == "quadrant") df else
-               .freg_quadrant_data(res, treatments)
+               .freg_quadrant_data(res, treatments, centre)
     hl    <- .freg_default_highlights(qdata)
   } else if (is.character(highlight) && length(highlight) > 0L) {
     all_genos <- unique(as.character(df$Genotype))
@@ -422,7 +449,7 @@ plot_fixedRegress <- function(res,
 
   # ---- Build plot --------------------------------------------------------
   switch(type,
-    regress  = .freg_plot_regress( df, hl, theme, ...),
-    quadrant = .freg_plot_quadrant(df, hl, theme, ...)
+    regress  = .freg_plot_regress( df, hl, centre, theme, ...),
+    quadrant = .freg_plot_quadrant(df, hl, centre, theme, ...)
   )
 }

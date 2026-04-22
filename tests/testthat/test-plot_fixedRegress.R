@@ -198,6 +198,37 @@ test_that("custom theme is applied without error", {
   )
 })
 
+test_that("centre = FALSE returns ggplot for both types", {
+  res <- make_mock_freg()
+  for (tp in c("regress", "quadrant"))
+    expect_s3_class(
+      plot_fixedRegress(res, type = tp, centre = FALSE), "ggplot"
+    )
+})
+
+test_that("centre = TRUE subtracts group mean from x", {
+  res    <- make_mock_freg(ns = 3L, nvar = 10L)
+  df_raw <- plot_fixedRegress(res, type = "quadrant",
+                              centre = FALSE, return_data = TRUE)
+  df_cen <- plot_fixedRegress(res, type = "quadrant",
+                              centre = TRUE,  return_data = TRUE)
+  grp_means <- ave(df_raw$x, df_raw$Group, FUN = mean)
+  expect_equal(df_cen$x, df_raw$x - grp_means, tolerance = 1e-9)
+})
+
+test_that("centre = TRUE sets regress intercept to 0", {
+  df <- plot_fixedRegress(make_mock_freg(), type = "regress",
+                          centre = TRUE, return_data = TRUE)
+  expect_true(all(abs(df$intercept) < 1e-9))
+})
+
+test_that("invalid centre value gives informative error", {
+  expect_error(
+    plot_fixedRegress(make_mock_freg(), centre = "yes"),
+    regexp = "logical"
+  )
+})
+
 test_that("plot works with by = NULL (single Group = 'All')", {
   res        <- make_mock_freg(ns = 1L, by_col = "Group")
   res$blues[["Group"]] <- "All"
