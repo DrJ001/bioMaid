@@ -237,13 +237,32 @@
 
   base_col <- if (is.null(hl)) "#4E79A7" else "grey78"
 
-  # Zero reference lines only when data is centred -- when centre = FALSE,
-  # x and y are on absolute BLUE scale (~4500) so x=0 / y=0 are off-screen
-  # and would compress the visible data range.
-  ref_layers <- if (centre) list(
-    ggplot2::geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey70"),
-    ggplot2::geom_vline(xintercept = 0, linewidth = 0.25, colour = "grey70")
-  ) else list()
+  # Reference lines: zero when centred; treatment means when not centred.
+  # When centre = FALSE, x and y are on absolute BLUE scale (~4500) so 0 is
+  # off-screen.  Instead, draw lines at the within-group means of x and y --
+  # these fall in the middle of each panel and give the same above/below
+  # average split as the zero line does in the centred case.
+  ref_layers <- if (centre) {
+    list(
+      ggplot2::geom_hline(yintercept = 0, linewidth = 0.25, colour = "grey70"),
+      ggplot2::geom_vline(xintercept = 0, linewidth = 0.25, colour = "grey70")
+    )
+  } else {
+    x_means <- aggregate(x ~ Group,              data = df, FUN = mean)
+    y_means <- aggregate(y ~ Group + pair_label, data = df, FUN = mean)
+    list(
+      ggplot2::geom_vline(
+        data      = x_means,
+        ggplot2::aes(xintercept = x),
+        linewidth = 0.25, colour = "grey70"
+      ),
+      ggplot2::geom_hline(
+        data      = y_means,
+        ggplot2::aes(yintercept = y),
+        linewidth = 0.25, colour = "grey70"
+      )
+    )
+  }
 
   p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y)) +
     ref_layers +
@@ -285,12 +304,20 @@
   base_col <- if (is.null(hl)) "#E15759" else "grey78"
 
   # Horizontal zero line always drawn: y = OLS residual is always centred.
-  # Vertical zero line only when x is centred; with centre = FALSE,
-  # x = absolute BLUE (~4500) so x=0 is off-screen and would squash the plot.
-  vline_layer <- if (centre)
+  # Vertical reference: zero when centred; within-group mean of x when not.
+  # The group mean falls in the centre of each column of panels and gives
+  # the same above/below average split as zero does in the centred case.
+  vline_layer <- if (centre) {
     ggplot2::geom_vline(xintercept = 0, linetype = "dotted",
                         linewidth  = 0.7, colour = "grey30")
-  else list()
+  } else {
+    x_means <- aggregate(x ~ Group, data = df, FUN = mean)
+    ggplot2::geom_vline(
+      data     = x_means,
+      ggplot2::aes(xintercept = x),
+      linetype = "dotted", linewidth = 0.7, colour = "grey30"
+    )
+  }
 
   p <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y)) +
     ggplot2::geom_hline(yintercept = 0, linetype = "dotted",
