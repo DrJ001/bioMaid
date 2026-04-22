@@ -86,6 +86,49 @@ test_that("all three types return a ggplot object", {
     expect_s3_class(plot_randomRegress(res, type = tp), "ggplot")
 })
 
+test_that("highlight = NULL suppresses highlighting without error", {
+  res <- make_mock_res()
+  for (tp in c("regress", "quadrant"))
+    expect_s3_class(
+      plot_randomRegress(res, type = tp, highlight = NULL), "ggplot"
+    )
+})
+
+test_that("user-specified highlight returns ggplot", {
+  res  <- make_mock_res()
+  vars <- unique(res$blups$Variety)[1:3]
+  expect_s3_class(
+    plot_randomRegress(res, type = "quadrant", highlight = vars),
+    "ggplot"
+  )
+})
+
+test_that("non-existent highlight variety raises a warning", {
+  res <- make_mock_res()
+  expect_warning(
+    plot_randomRegress(res, type = "quadrant",
+                       highlight = c("V1", "DoesNotExist")),
+    regexp = "not found"
+  )
+})
+
+test_that("default highlights return data frame with Variety and group cols", {
+  res   <- make_mock_res(ns = 4L, nvar = 12L)
+  qdata <- plot_randomRegress(res, type = "quadrant", return_data = TRUE)
+  hl    <- biomAid:::.rreg_default_highlights(qdata)
+  expect_s3_class(hl, "data.frame")
+  expect_true(all(c("Variety", "group") %in% names(hl)))
+  expect_true(all(hl$group %in% c("tr", "bl")))
+})
+
+test_that("default highlights contain at most 6 varieties", {
+  res   <- make_mock_res(ns = 4L, nvar = 12L)
+  qdata <- plot_randomRegress(res, type = "quadrant", return_data = TRUE)
+  hl    <- biomAid:::.rreg_default_highlights(qdata)
+  expect_lte(nrow(hl), 6L)
+  expect_gte(nrow(hl), 1L)
+})
+
 test_that("return_data = TRUE returns a data.frame for all types", {
   res <- make_mock_res()
   for (tp in c("regress", "quadrant", "gmat")) {

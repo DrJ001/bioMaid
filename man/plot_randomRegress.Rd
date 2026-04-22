@@ -8,6 +8,7 @@ plot_randomRegress(
   res,
   type = c("regress", "quadrant", "gmat"),
   treatments = NULL,
+  highlight = "default",
   theme = ggplot2::theme_bw(),
   return_data = FALSE,
   ...
@@ -21,64 +22,87 @@ plot_randomRegress(
 
 \item{treatments}{Character vector restricting which conditioned treatments
 are included in the plot.  \code{NULL} (default) includes all conditioned
-treatments.  Ignored for \code{type = "gmat"}.  When \code{type = "regress"} the
-site-specific \eqn{\hat{\beta}} for the selected treatments is annotated
-in the top-left corner of each panel.}
+treatments.  Ignored for \code{type = "gmat"}.}
 
-\item{theme}{A complete ggplot2 theme object applied to the plot.
-Defaults to \code{\link[ggplot2:ggtheme]{ggplot2::theme_bw()}}.}
+\item{highlight}{Controls variety annotation for \code{"regress"} and
+\code{"quadrant"} plots. One of:
+\describe{
+\item{\code{"default"}}{Automatically selects 6 varieties (3 top-right,
+3 bottom-left) using the polar-angle algorithm described in Details.}
+\item{character vector}{Highlight exactly the named varieties.}
+\item{\code{NULL}}{No highlighting; all points drawn in a single colour.}
+}
+Default is \code{"default"}.  Ignored for \code{type = "gmat"}.}
 
-\item{return_data}{Logical.  If \code{TRUE} the function returns the tidy data
-frame used to build the plot instead of the plot itself.  Useful for
-bespoke customisation. Default \code{FALSE}.}
+\item{theme}{A complete ggplot2 theme object. Default
+\code{\link[ggplot2:ggtheme]{ggplot2::theme_bw()}}.}
 
-\item{...}{Additional arguments passed to the primary \code{geom_point()}
-call (e.g. \code{size}, \code{alpha}, \code{shape}).  Not used for \code{"beta"} or
-\code{"gmat"} types.}
+\item{return_data}{Logical. If \code{TRUE} returns the tidy data frame used to
+build the plot rather than the plot itself. Default \code{FALSE}.}
+
+\item{...}{Additional arguments passed to the background
+\code{geom_point()} call (e.g. \code{size}, \code{alpha}, \code{shape}). Not used for
+\code{"gmat"}.}
 }
 \value{
 A \code{ggplot} object (when \code{return_data = FALSE}) or a \code{data.frame}
 (when \code{return_data = TRUE}).
 }
 \description{
-Produces one of four ggplot2 visualisations from a \code{\link[=randomRegress]{randomRegress()}} result
+Produces one of three ggplot2 visualisations from a \code{\link[=randomRegress]{randomRegress()}} result
 object.  All plot types return a \code{ggplot} object that can be further
 customised with the standard \code{+} operator.
 }
 \details{
-The four \code{type} options are:
+The three \code{type} options are:
 \describe{
 \item{\code{"regress"}}{Grid of scatter plots faceted by BLUP pair (rows) and
 site (columns).  Each panel plots the raw conditioned-treatment BLUPs
-(y) against the conditioning-treatment BLUPs (x) for one site × one
+(y) against the conditioning-treatment BLUPs (x) for one site x one
 treatment pair.  A dotted random regression line with the site-specific
-beta slope passes through the origin.}
+beta slope passes through the origin.  The site-specific
+\eqn{\hat{\beta}} is annotated in the top-left corner of each panel.}
 \item{\code{"quadrant"}}{Grid of scatter plots faceted by BLUP pair (rows) and
 site (columns).  Each panel plots responsiveness BLUPs (y) against the
-conditioning treatment BLUPs (x = efficiency) for one site × one
+conditioning treatment BLUPs (x = efficiency) for one site x one
 treatment pair.  Dotted zero reference lines on both axes divide each
 panel into four quadrants.}
 \item{\code{"gmat"}}{Heatmap of the G-matrix converted to a correlation
 matrix via \code{\link[stats:cor]{stats::cov2cor()}}.  Fill uses a diverging palette centred
 at zero.}
 }
+
+\strong{Variety highlighting} (\code{type = "regress"} and \code{"quadrant"} only):
+By default, six varieties are identified and annotated across all panels.
+Three come from the top-right quadrant of the efficiency x responsiveness
+space (above average on both axes) and three from the bottom-left quadrant
+(below average on both axes).  Within each quadrant the three varieties are
+chosen by their polar angle to represent an efficiency archetype (small
+angle), a balanced archetype (angle near \eqn{\pi/4}), and a
+responsiveness archetype (large angle), selecting only from varieties whose
+distance from the origin exceeds the 50th percentile within their quadrant.
+The same six varieties are consistently annotated across all site and
+treatment-pair panels.
 }
 \examples{
 \dontrun{
 res <- randomRegress(model, levs = c("N0", "N1", "N2"))
 
-# Regression plot (default)
+# Regression plot with default 6 highlighted varieties
 plot_randomRegress(res)
 
-# Quadrant plot, further customised
-plot_randomRegress(res, type = "quadrant") +
-  ggplot2::labs(title = "Efficiency vs Responsiveness")
+# Quadrant plot with user-specified highlights
+plot_randomRegress(res, type = "quadrant",
+                  highlight = c("Var01", "Var15", "Var22"))
+
+# Suppress highlighting
+plot_randomRegress(res, type = "quadrant", highlight = NULL)
 
 # G-matrix correlation heatmap
 plot_randomRegress(res, type = "gmat")
 
-# Retrieve the tidy data frame instead of the plot
-df <- plot_randomRegress(res, type = "beta", return_data = TRUE)
+# Retrieve the tidy data frame
+df <- plot_randomRegress(res, type = "quadrant", return_data = TRUE)
 }
 
 }
