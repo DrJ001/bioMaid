@@ -1,5 +1,5 @@
 # tests/testthat/test-randomRegressMV-e2e.R
-# End-to-end tests for randomRegressMV() non-FA path.
+# End-to-end tests for randomRegress() non-FA path.
 # predict() and .asreml_vparams() are both in biomAid's namespace
 # and can be mocked via local_mocked_bindings().
 
@@ -52,7 +52,7 @@ make_rrm_model <- function() {
 # ---------------------------------------------------------------------------
 # 1. Baseline: returns correct list elements
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() baseline returns named list", {
+test_that("randomRegress() baseline returns named list", {
   G  <- make_Gmat_rrm()
   pv <- make_pvals_rrm()
   local_mocked_bindings(
@@ -60,7 +60,7 @@ test_that("randomRegressMV() baseline returns named list", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"),
                           type = "baseline")
@@ -73,7 +73,7 @@ test_that("randomRegressMV() baseline returns named list", {
 # ---------------------------------------------------------------------------
 # 2. Baseline: blups has Site, Variety, raw BLUP and resp columns
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() blups has correct columns", {
+test_that("randomRegress() blups has correct columns", {
   G  <- make_Gmat_rrm()
   pv <- make_pvals_rrm()
   local_mocked_bindings(
@@ -81,7 +81,7 @@ test_that("randomRegressMV() blups has correct columns", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"))
   expect_true("Site"    %in% names(res$blups))
@@ -94,7 +94,7 @@ test_that("randomRegressMV() blups has correct columns", {
 # ---------------------------------------------------------------------------
 # 3. Baseline: Gmat returned correctly
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() Gmat matches mock", {
+test_that("randomRegress() Gmat matches mock", {
   G  <- make_Gmat_rrm(seed = 2L)
   pv <- make_pvals_rrm(seed = 2L)
   local_mocked_bindings(
@@ -102,7 +102,7 @@ test_that("randomRegressMV() Gmat matches mock", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"))
   expect_equal(res$Gmat, G, tolerance = 1e-12)
@@ -111,7 +111,7 @@ test_that("randomRegressMV() Gmat matches mock", {
 # ---------------------------------------------------------------------------
 # 4. Sequential: TGmat is diagonal (Cholesky property)
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() sequential: TGmat off-diagonals near zero", {
+test_that("randomRegress() sequential: TGmat off-diagonals near zero", {
   G  <- make_Gmat_rrm(seed = 3L)
   pv <- make_pvals_rrm(seed = 3L)
   local_mocked_bindings(
@@ -119,7 +119,7 @@ test_that("randomRegressMV() sequential: TGmat off-diagonals near zero", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"),
                           type = "sequential")
@@ -131,7 +131,7 @@ test_that("randomRegressMV() sequential: TGmat off-diagonals near zero", {
 # ---------------------------------------------------------------------------
 # 5. Partial: all treatments conditioned
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() partial: resp columns for all levs", {
+test_that("randomRegress() partial: resp columns for all levs", {
   G  <- make_Gmat_rrm(seed = 4L)
   pv <- make_pvals_rrm(seed = 4L)
   local_mocked_bindings(
@@ -139,7 +139,7 @@ test_that("randomRegressMV() partial: resp columns for all levs", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"),
                           type = "partial")
@@ -149,7 +149,7 @@ test_that("randomRegressMV() partial: resp columns for all levs", {
 # ---------------------------------------------------------------------------
 # 6. sigmat: conditional variances are positive
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() sigmat values are positive", {
+test_that("randomRegress() sigmat values are positive", {
   G  <- make_Gmat_rrm(seed = 5L)
   pv <- make_pvals_rrm(seed = 5L)
   local_mocked_bindings(
@@ -157,7 +157,7 @@ test_that("randomRegressMV() sigmat values are positive", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"))
   expect_true(all(res$sigmat > 0, na.rm = TRUE))
@@ -166,7 +166,7 @@ test_that("randomRegressMV() sigmat values are positive", {
 # ---------------------------------------------------------------------------
 # 7. beta: regression coefficients are finite
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() beta coefficients are finite", {
+test_that("randomRegress() beta coefficients are finite", {
   G  <- make_Gmat_rrm(seed = 6L)
   pv <- make_pvals_rrm(seed = 6L)
   local_mocked_bindings(
@@ -174,7 +174,7 @@ test_that("randomRegressMV() beta coefficients are finite", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"))
   expect_true(all(is.finite(res$beta$N1), na.rm = TRUE))
@@ -183,15 +183,15 @@ test_that("randomRegressMV() beta coefficients are finite", {
 # ---------------------------------------------------------------------------
 # 8. Error: levs NULL
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() errors when levs is NULL", {
-  expect_error(randomRegressMV(make_rrm_model(), levs = NULL),
+test_that("randomRegress() errors when levs is NULL", {
+  expect_error(randomRegress(make_rrm_model(), levs = NULL),
                "At least two treatment levels")
 })
 
 # ---------------------------------------------------------------------------
 # 9. Custom type works end-to-end
 # ---------------------------------------------------------------------------
-test_that("randomRegressMV() custom type runs without error", {
+test_that("randomRegress() custom type runs without error", {
   G  <- make_Gmat_rrm(seed = 7L)
   pv <- make_pvals_rrm(seed = 7L)
   local_mocked_bindings(
@@ -199,7 +199,7 @@ test_that("randomRegressMV() custom type runs without error", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegressMV(make_rrm_model(),
+  res <- randomRegress(make_rrm_model(),
                           Env  = "TSite:Variety",
                           levs = c("N0","N1","N2"),
                           type = "custom",

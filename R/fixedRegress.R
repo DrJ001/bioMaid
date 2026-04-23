@@ -1,7 +1,7 @@
 #' Multivariate Fixed-Effects Regression of Treatment BLUEs Within Groups
 #'
 #' @description
-#' The fixed-effects (BLUE) analogue of [randomRegressMV()].  For each group
+#' The fixed-effects (BLUE) analogue of [randomRegress()].  For each group
 #' defined by the `by` argument, the function regresses the BLUEs of each
 #' conditioned treatment on the BLUEs of its conditioning set using ordinary
 #' least squares, returning a **response index** (regression residual) for
@@ -26,7 +26,7 @@
 #' \eqn{\sigma_j^2\bar{\bm{H}}_j} with \eqn{df = n - a - 1} degrees of
 #' freedom.
 #'
-#' The same four conditioning schemes as [randomRegressMV()] are available
+#' The same four conditioning schemes as [randomRegress()] are available
 #' via the `type` argument:
 #'
 #' \describe{
@@ -87,32 +87,32 @@
 #'   \item{`type`}{The `type` argument used.}
 #' }
 #'
-#' @seealso [randomRegressMV()], [asreml::predict.asreml()]
+#' @seealso [randomRegress()], [asreml::predict.asreml()]
 #'
 #' @examples
 #' \dontrun{
 #' ## Baseline: T1 and T2 each regressed on T0 within each Site
-#' res_base <- fixedRegressMV(model,
+#' res_base <- fixedRegress(model,
 #'                             term = "Treatment:Site:Genotype",
 #'                             by   = "Site",
 #'                             levs = c("T0","T1","T2"))
 #'
 #' ## Sequential: T1|T0, T2|{T0,T1} -- Gram-Schmidt orthogonal residuals
-#' res_seq  <- fixedRegressMV(model,
+#' res_seq  <- fixedRegress(model,
 #'                             term = "Treatment:Site:Genotype",
 #'                             by   = "Site",
 #'                             levs = c("T0","T1","T2"),
 #'                             type = "sequential")
 #'
 #' ## Partial: each treatment vs all others within each site
-#' res_part <- fixedRegressMV(model,
+#' res_part <- fixedRegress(model,
 #'                             term = "Treatment:Site:Genotype",
 #'                             by   = "Site",
 #'                             levs = c("T0","T1","T2"),
 #'                             type = "partial")
 #'
 #' ## Custom: T0 unconditional, T1|T0, T2|{T0,T1}
-#' res_cust <- fixedRegressMV(model,
+#' res_cust <- fixedRegress(model,
 #'                             term = "Treatment:Site:Genotype",
 #'                             by   = "Site",
 #'                             levs = c("T0","T1","T2"),
@@ -123,7 +123,7 @@
 #' }
 #'
 #' @export
-fixedRegressMV <- function(model, term = "Treatment:Genotype",
+fixedRegress <- function(model, term = "Treatment:Genotype",
                             by   = NULL, levs = NULL,
                             type = "baseline", cond = NULL,
                             min_obs = NULL, ...) {

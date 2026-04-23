@@ -1,5 +1,5 @@
 # tests/testthat/test-condList.R
-# Dedicated tests for .condList() — shared by randomRegressMV & fixedRegressMV
+# Dedicated tests for .condList() — shared by randomRegress & fixedRegress
 
 test_that(".condList: baseline structure", {
   cl <- biomAid:::.condList(c("N0","N1","N2","N3"), "baseline", NULL)

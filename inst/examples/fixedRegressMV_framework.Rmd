@@ -2,7 +2,7 @@
 title: |
   **Mathematical Framework for Multivariate Fixed-Effects Regression\
   of Treatment BLUEs in Multi-Environment Trials**
-subtitle: "Theory underlying `fixedRegressMV()` in the BioMaid package"
+subtitle: "Theory underlying `fixedRegress()` in the BioMaid package"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
   pdf_document:
@@ -26,7 +26,7 @@ header-includes:
   - \onehalfspacing
   - \usepackage{fancyhdr}
   - \pagestyle{fancy}
-  - \fancyhead[L]{\textit{BioMaid --- fixedRegressMV()}}
+  - \fancyhead[L]{\textit{BioMaid --- fixedRegress()}}
   - \fancyhead[R]{\thepage}
   - \fancyfoot[C]{}
   - \renewcommand{\headrulewidth}{0.4pt}
@@ -53,9 +53,9 @@ variety performance:
   variety performance, estimated by generalised least squares without
   shrinkage.
 
-The `randomRegressMV()` function uses the $\bm{G}$-matrix directly to
+The `randomRegress()` function uses the $\bm{G}$-matrix directly to
 decompose BLUPs into efficiency and responsiveness components via the
-multivariate conditional normal distribution.  `fixedRegressMV()` provides
+multivariate conditional normal distribution.  `fixedRegress()` provides
 the analogous decomposition for BLUEs, replacing the $\bm{G}$-matrix
 conditioning with **ordinary least squares (OLS) regression** of one
 treatment's predicted values on another's across genotypes.
@@ -64,14 +64,14 @@ treatment's predicted values on another's across genotypes.
 
 The classical Finlay--Wilkinson (1963) regression regresses each variety's
 treatment-specific yield on the environment mean for that treatment.
-`fixedRegressMV()` is a direct multi-treatment generalisation of this idea:
+`fixedRegress()` is a direct multi-treatment generalisation of this idea:
 instead of regressing on environment means, it regresses one treatment's
 BLUE on another treatment's BLUE **across genotypes within each environment**,
 returning the OLS residual as a genotype-specific **response index**.
 
 ## Overview of Conditioning Schemes
 
-The same four conditioning schemes from `randomRegressMV()` are available,
+The same four conditioning schemes from `randomRegress()` are available,
 differing only in the conditioning set $A_j$ chosen for each treatment $j$:
 
 | `type` | Conditioning set $A_j$ | $\bar{\bm{H}}_j$ rank | Key property |
@@ -255,7 +255,7 @@ $$
 $$
 
 These mirror exactly the properties of the responsiveness BLUPs in
-`randomRegressMV()`.  The key difference is that here the orthogonality
+`randomRegress()`.  The key difference is that here the orthogonality
 holds with respect to the **observed conditioning BLUEs** rather than the
 **true genetic values** implied by the $\bm{G}$-matrix.
 
@@ -329,7 +329,7 @@ orthogonal complement of $\text{span}\{\bm{1}, \hat{\bm{\tau}}_1, \ldots,
 this same span by construction.  The degrees of freedom decrease with
 treatment order: $df_j = n - j$.
 
-This is the OLS analogue of `TGmat` being diagonal in `randomRegressMV()`
+This is the OLS analogue of `TGmat` being diagonal in `randomRegress()`
 with `type = "sequential"`.
 
 ## Partial (`type = "partial"`)
@@ -425,13 +425,13 @@ significant.
 
 \newpage
 
-# Relationship to `randomRegressMV()`
+# Relationship to `randomRegress()`
 
 The two functions implement the same four conditioning schemes and share the
 same `.condList()` helper, but differ fundamentally in what is being
 regressed and the source of the regression coefficients:
 
-| Quantity | `randomRegressMV()` | `fixedRegressMV()` |
+| Quantity | `randomRegress()` | `fixedRegress()` |
 |:---------|:--------------------|:-------------------|
 | **Input** | BLUPs $\hat{\bm{u}}_j$ (random effects) | BLUEs $\hat{\bm{\tau}}_j$ (fixed effects) |
 | **Regression coefficients** | $\bm{\beta}_j = \bm{G}_{A_jA_j}^{-1}\bm{G}_{A_jj}$ (from $\bm{G}$-matrix) | $\hat{\bm{\beta}}_j = (\bm{X}_j^\top\bm{X}_j)^{-1}\bm{X}_j^\top\hat{\bm{\tau}}_j$ (OLS) |
@@ -443,10 +443,10 @@ regressed and the source of the regression coefficients:
 | **Sequential $\bm{T}_G$** | Diagonal (exact) | Analogue: mutual orthogonality of residuals |
 | **FA models** | Supported (HSD = NA) | Not applicable (BLUEs only) |
 
-The key conceptual difference is that in `randomRegressMV()` the regression
+The key conceptual difference is that in `randomRegress()` the regression
 coefficient $\bm{\beta}_j$ is a **population-level genetic parameter** drawn
 from the model's covariance structure, constant across all varieties at a
-given site.  In `fixedRegressMV()`, $\hat{\bm{\beta}}_j$ is a
+given site.  In `fixedRegress()`, $\hat{\bm{\beta}}_j$ is a
 **site-specific OLS estimate** computed from the observed BLUE vectors ---
 it changes from group to group and reflects the empirical relationship
 between treatment BLUEs in the data.
@@ -620,7 +620,7 @@ conditions on both $T0$ and $T2$ simultaneously.
 
 # Summary
 
-`fixedRegressMV()` provides a statistically coherent multi-treatment
+`fixedRegress()` provides a statistically coherent multi-treatment
 generalisation of the fixed-effects regression approach in `fixedRegress()`,
 using OLS regression of BLUEs to decompose variety performance into:
 
@@ -634,7 +634,7 @@ using OLS regression of BLUEs to decompose variety performance into:
 
 The four conditioning schemes --- `"baseline"`, `"sequential"`,
 `"partial"`, and `"custom"` --- provide a spectrum of decompositions with
-the same interpretation as in `randomRegressMV()` but driven entirely by the
+the same interpretation as in `randomRegress()` but driven entirely by the
 observed BLUE vectors rather than a modelled genetic covariance structure.
 The hat-matrix annihilator $\bar{\bm{H}}_j$ is the central object: it is
 symmetric and idempotent, provides the exact residual variance--covariance
@@ -645,6 +645,6 @@ $n - |A_j| - 1$ for each regression.
 \noindent\rule{\textwidth}{0.4pt}
 \begin{center}
 \textit{BioMaid R package} \quad|\quad
-\texttt{fixedRegressMV()} \quad|\quad
+\texttt{fixedRegress()} \quad|\quad
 \textit{`r format(Sys.Date(), "%Y")`}
 \end{center}

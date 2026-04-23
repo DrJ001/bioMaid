@@ -2,7 +2,7 @@
 #'
 #' @description
 #' Generates a balanced split-plot field trial dataset suitable for fitting
-#' ASReml-R mixed models and testing [randomRegressMV()].
+#' ASReml-R mixed models and testing [randomRegress()].
 #'
 #' **Experimental design** (per environment):
 #' \itemize{
@@ -17,7 +17,7 @@
 #' }
 #'
 #' **Genetic simulation** uses the same conditional multivariate-normal
-#' structure that [randomRegressMV()] is designed to recover:
+#' structure that [randomRegress()] is designed to recover:
 #' \deqn{u_1 \sim \mathcal{N}(0,\,\sigma_1^2)}
 #' \deqn{u_j \mid u_1 \sim \mathcal{N}(\beta_{j,s}\,u_1,\,\sigma_{r_j}^2)
 #'       \quad j = 2,\ldots,k}
@@ -32,7 +32,7 @@
 #' @param nsite       Integer. Number of environments (sites). Default `10`.
 #' @param treatments  Character vector of length ≥ 2 giving treatment labels.
 #'   The **first element** is the baseline; all others are regressed onto it
-#'   in [randomRegressMV()].  Default `c("N0", "N1", "N2")`.
+#'   in [randomRegress()].  Default `c("N0", "N1", "N2")`.
 #' @param nrep        Integer. Number of complete replicates per environment.
 #'   Default `3`.
 #' @param rows_per_strip Integer or `NULL`. Rows allocated to each treatment
@@ -86,7 +86,7 @@
 #'     `Variety`, `Rep`, `Row`, `Column`, `yield`. Ordered by `Site`, `Row`,
 #'     `Column` for compatibility with ASReml-R spatial models.}
 #'   \item{`params`}{Named list of true simulation parameters for ground-truth
-#'     comparison with [randomRegressMV()] estimates:
+#'     comparison with [randomRegress()] estimates:
 #'     \describe{
 #'       \item{`beta`}{`nsite × (ntreat-1)` matrix of true site-specific
 #'         regression coefficients.}
@@ -104,7 +104,7 @@
 #' # Reproduce the original 3-treatment, 10-site dataset
 #' out <- simTrialData(seed = 2024, outfile = "plant_trial_data.csv")
 #' head(out$data)
-#' out$params$beta   # compare with randomRegressMV()$beta
+#' out$params$beta   # compare with randomRegress()$beta
 #'
 #' # Two-treatment, 5-site dataset
 #' out2 <- simTrialData(nsite = 5, treatments = c("Dry", "Irr"), seed = 1)
@@ -364,7 +364,7 @@ simTrialData <- function(nvar           = 20L,
     cat("      residual = ~ dsum(~ ar1(Row):ar1(Column) | Site),\n")
     cat("      data     = dat\n")
     cat("    )\n")
-    cat(sprintf("\n    randomRegressMV(model, Env = \"TSite:Variety\",\n"))
+    cat(sprintf("\n    randomRegress(model, Env = \"TSite:Variety\",\n"))
     cat(sprintf("                    levs = c(%s), sep = \"%s\")\n",
                 paste(sprintf('"%s"', treatments), collapse = ", "), sep))
     cat("============================\n\n")
@@ -403,6 +403,6 @@ if (FALSE) {
   # Quick sanity check: treatment means should increase N0 -> N1 -> N2
   print(tapply(out$data$yield, out$data$Treatment, mean))
 
-  # True betas to compare against randomRegressMV() estimates
+  # True betas to compare against randomRegress() estimates
   print(out$params$beta)
 }

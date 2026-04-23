@@ -39,7 +39,7 @@ otherwise.  Default \code{20}.}
 
 \item{treatments}{Character vector of length ≥ 2 giving treatment labels.
 The \strong{first element} is the baseline; all others are regressed onto it
-in \code{\link[=randomRegressMV]{randomRegressMV()}}.  Default \code{c("N0", "N1", "N2")}.}
+in \code{\link[=randomRegress]{randomRegress()}}.  Default \code{c("N0", "N1", "N2")}.}
 
 \item{nrep}{Integer. Number of complete replicates per environment.
 Default \code{3}.}
@@ -114,7 +114,7 @@ A named list:
 \code{Variety}, \code{Rep}, \code{Row}, \code{Column}, \code{yield}. Ordered by \code{Site}, \code{Row},
 \code{Column} for compatibility with ASReml-R spatial models.}
 \item{\code{params}}{Named list of true simulation parameters for ground-truth
-comparison with \code{\link[=randomRegressMV]{randomRegressMV()}} estimates:
+comparison with \code{\link[=randomRegress]{randomRegress()}} estimates:
 \describe{
 \item{\code{beta}}{\verb{nsite × (ntreat-1)} matrix of true site-specific
 regression coefficients.}
@@ -129,7 +129,7 @@ regression coefficients.}
 }
 \description{
 Generates a balanced split-plot field trial dataset suitable for fitting
-ASReml-R mixed models and testing \code{\link[=randomRegressMV]{randomRegressMV()}}.
+ASReml-R mixed models and testing \code{\link[=randomRegress]{randomRegress()}}.
 
 \strong{Experimental design} (per environment):
 \itemize{
@@ -144,7 +144,7 @@ treatments randomised to strips independently in every replicate.
 }
 
 \strong{Genetic simulation} uses the same conditional multivariate-normal
-structure that \code{\link[=randomRegressMV]{randomRegressMV()}} is designed to recover:
+structure that \code{\link[=randomRegress]{randomRegress()}} is designed to recover:
 \deqn{u_1 \sim \mathcal{N}(0,\,\sigma_1^2)}
 \deqn{u_j \mid u_1 \sim \mathcal{N}(\beta_{j,s}\,u_1,\,\sigma_{r_j}^2)
       \quad j = 2,\ldots,k}
@@ -158,7 +158,7 @@ model estimates.
 # Reproduce the original 3-treatment, 10-site dataset
 out <- simTrialData(seed = 2024, outfile = "plant_trial_data.csv")
 head(out$data)
-out$params$beta   # compare with randomRegressMV()$beta
+out$params$beta   # compare with randomRegress()$beta
 
 # Two-treatment, 5-site dataset
 out2 <- simTrialData(nsite = 5, treatments = c("Dry", "Irr"), seed = 1)

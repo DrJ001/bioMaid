@@ -62,7 +62,7 @@ waldTest(pred,
 
 ---
 
-### `randomRegressMV()` — Random regression (BLUP-based)
+### `randomRegress()` — Random regression (BLUP-based)
 
 Decomposes Genotype x Environment x (Treatment/Trait) variety BLUP result from
 an ASReml-R v4 model to generate **responsiveness (or tolerance) indices** using
@@ -77,7 +77,7 @@ theory. Supports four conditioning schemes.
 | `"custom"` | User-specified conditioning sets |
 
 ```r
-res <- randomRegressMV(model,
+res <- randomRegress(model,
                        Env  = "TSite:Variety",
                        levs = c("N0","N1","N2"),
                        type = "sequential")
@@ -89,14 +89,14 @@ res$beta     # Site-specific regression coefficients
 
 ---
 
-### `fixedRegressMV()` — Fixed regression (BLUE-based)
+### `fixedRegress()` — Fixed regression (BLUE-based)
 
-The fixed-effects analogue of `randomRegressMV()`. Regresses treatment BLUEs
+The fixed-effects analogue of `randomRegress()`. Regresses treatment BLUEs
 via OLS within each group and returns **response or tolerance indices** for
 every genotype. The same four conditioning schemes are available.
 
 ```r
-res <- fixedRegressMV(model,
+res <- fixedRegress(model,
                       term = "Treatment:Site:Genotype",
                       by   = "Site",
                       levs = c("N0","N1","N2"),

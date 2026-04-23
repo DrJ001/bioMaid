@@ -2,7 +2,7 @@
 title: |
   **Mathematical Framework for Multivariate Random Regression\
   of Treatment BLUPs in Multi-Environment Trials**
-subtitle: "Theory underlying `randomRegressMV()` in the BioMaid package"
+subtitle: "Theory underlying `randomRegress()` in the BioMaid package"
 date: "`r format(Sys.Date(), '%d %B %Y')`"
 output:
   pdf_document:
@@ -26,7 +26,7 @@ header-includes:
   - \onehalfspacing
   - \usepackage{fancyhdr}
   - \pagestyle{fancy}
-  - \fancyhead[L]{\textit{BioMaid --- randomRegressMV()}}
+  - \fancyhead[L]{\textit{BioMaid --- randomRegress()}}
   - \fancyhead[R]{\thepage}
   - \fancyfoot[C]{}
   - \renewcommand{\headrulewidth}{0.4pt}
@@ -79,7 +79,7 @@ genetic covariance structure from a mixed model.  This has several advantages:
 
 ## Overview of Conditioning Schemes
 
-`randomRegressMV()` supports four built-in schemes, all grounded in the same
+`randomRegress()` supports four built-in schemes, all grounded in the same
 multivariate conditional normal formula but differing in the **conditioning set**
 $A_j$ chosen for each treatment $j$:
 
@@ -554,7 +554,7 @@ independent selection on responsiveness.
 ## Function Signature
 
 ```r
-randomRegressMV(model, Env   = "TSite:Variety",
+randomRegress(model, Env   = "TSite:Variety",
                        levs  = NULL,
                        type  = "baseline",
                        cond  = NULL,
@@ -780,7 +780,7 @@ yields the same $\bm{T}^{\text{seq}}$ and diagonal $\bm{T}_G$ as Scheme 2.
 
 # Summary
 
-The `randomRegressMV()` function implements a general framework for decomposing
+The `randomRegress()` function implements a general framework for decomposing
 variety BLUPs in multi-treatment, multi-environment plant breeding trials.  The
 foundation is the **universal conditional normal formula**: for any treatment
 $T_j$ and any conditioning set $A_j$,
@@ -816,6 +816,6 @@ interaction.
 \noindent\rule{\textwidth}{0.4pt}
 \begin{center}
 \textit{BioMaid R package} \quad|\quad
-\texttt{randomRegressMV()} \quad|\quad
+\texttt{randomRegress()} \quad|\quad
 \textit{`r format(Sys.Date(), "%Y")`}
 \end{center}

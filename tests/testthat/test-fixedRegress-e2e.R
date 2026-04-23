@@ -1,5 +1,5 @@
 # tests/testthat/test-fixedRegressMV-e2e.R
-# End-to-end tests for fixedRegressMV().
+# End-to-end tests for fixedRegress().
 # predict() is imported from stats, so local_mocked_bindings works.
 # All OLS calculations (lm, residuals, model.matrix) are standard R
 # and run without mocking.
@@ -42,10 +42,10 @@ mock_asreml <- function() structure(list(), class = "asreml")
 # ---------------------------------------------------------------------------
 # 1. Baseline: returns named list with correct elements
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() baseline returns correct list structure", {
+test_that("fixedRegress() baseline returns correct list structure", {
   p <- make_frm_pred()
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"))
   expect_named(res, c("blues","beta","sigmat","cond_list","type"))
@@ -58,10 +58,10 @@ test_that("fixedRegressMV() baseline returns correct list structure", {
 # ---------------------------------------------------------------------------
 # 2. Baseline: resp columns and HSD columns present in blues
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() baseline blues has resp.* and HSD.* columns", {
+test_that("fixedRegress() baseline blues has resp.* and HSD.* columns", {
   p <- make_frm_pred()
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"))
   expect_true(all(c("resp.T1","resp.T2") %in% names(res$blues)))
@@ -72,10 +72,10 @@ test_that("fixedRegressMV() baseline blues has resp.* and HSD.* columns", {
 # ---------------------------------------------------------------------------
 # 3. Baseline: residuals sum to zero within each group (OLS property)
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() baseline: resp residuals sum to zero", {
+test_that("fixedRegress() baseline: resp residuals sum to zero", {
   p <- make_frm_pred(seed = 2L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"))
   expect_equal(sum(res$blues$resp.T1), 0, tolerance = 1e-8)
@@ -85,10 +85,10 @@ test_that("fixedRegressMV() baseline: resp residuals sum to zero", {
 # ---------------------------------------------------------------------------
 # 4. Sequential: residuals orthogonal to T0 (Gram-Schmidt)
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() sequential: resp.T1 uncorrelated with T0", {
+test_that("fixedRegress() sequential: resp.T1 uncorrelated with T0", {
   p <- make_frm_pred(seed = 3L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"),
                          type = "sequential")
@@ -98,10 +98,10 @@ test_that("fixedRegressMV() sequential: resp.T1 uncorrelated with T0", {
 # ---------------------------------------------------------------------------
 # 5. Sequential: type field matches
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() sequential: type field is 'sequential'", {
+test_that("fixedRegress() sequential: type field is 'sequential'", {
   p <- make_frm_pred(seed = 4L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"),
                          type = "sequential")
@@ -111,10 +111,10 @@ test_that("fixedRegressMV() sequential: type field is 'sequential'", {
 # ---------------------------------------------------------------------------
 # 6. Partial: all treatments conditioned
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() partial: all levs have resp columns", {
+test_that("fixedRegress() partial: all levs have resp columns", {
   p <- make_frm_pred(seed = 5L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"),
                          type = "partial")
@@ -125,10 +125,10 @@ test_that("fixedRegressMV() partial: all levs have resp columns", {
 # ---------------------------------------------------------------------------
 # 7. Custom: user-defined conditioning
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() custom type works", {
+test_that("fixedRegress() custom type works", {
   p <- make_frm_pred(seed = 6L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"),
                          type = "custom",
@@ -140,10 +140,10 @@ test_that("fixedRegressMV() custom type works", {
 # ---------------------------------------------------------------------------
 # 8. by argument: separate groups per site
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() by='Site': separate regressions per site", {
+test_that("fixedRegress() by='Site': separate regressions per site", {
   p <- make_frm_pred(sites = c("S1","S2"), n_geno = 15L, seed = 7L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Site:Genotype",
                          by   = "Site",
                          levs = c("T0","T1","T2"))
@@ -154,10 +154,10 @@ test_that("fixedRegressMV() by='Site': separate regressions per site", {
 # ---------------------------------------------------------------------------
 # 9. sigmat dimensions: n_groups x n_conditioned
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() sigmat has correct dimensions", {
+test_that("fixedRegress() sigmat has correct dimensions", {
   p <- make_frm_pred(sites = c("S1","S2"), n_geno = 15L, seed = 8L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Site:Genotype",
                          by   = "Site",
                          levs = c("T0","T1","T2"))
@@ -168,11 +168,11 @@ test_that("fixedRegressMV() sigmat has correct dimensions", {
 # ---------------------------------------------------------------------------
 # 10. min_obs: warning when too few common genotypes
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() warns when common genotypes < min_obs", {
+test_that("fixedRegress() warns when common genotypes < min_obs", {
   p <- make_frm_pred(n_geno = 3L, seed = 9L)  # only 3 genotypes < default min_obs=5
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
   expect_warning(
-    fixedRegressMV(mock_asreml(),
+    fixedRegress(mock_asreml(),
                     term    = "Treatment:Genotype",
                     levs    = c("T0","T1","T2"),
                     min_obs = 5L),
@@ -183,10 +183,10 @@ test_that("fixedRegressMV() warns when common genotypes < min_obs", {
 # ---------------------------------------------------------------------------
 # 11. HSD values are positive
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() HSD values are positive", {
+test_that("fixedRegress() HSD values are positive", {
   p <- make_frm_pred(seed = 10L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"))
   hsd_vals <- res$blues$HSD.T1
@@ -197,10 +197,10 @@ test_that("fixedRegressMV() HSD values are positive", {
 # ---------------------------------------------------------------------------
 # 12. beta list: data frame per conditioned treatment with correct column
 # ---------------------------------------------------------------------------
-test_that("fixedRegressMV() beta contains OLS coefficients", {
+test_that("fixedRegress() beta contains OLS coefficients", {
   p <- make_frm_pred(seed = 11L)
   local_mocked_bindings(predict = function(...) p, .package = "biomAid")
-  res <- fixedRegressMV(mock_asreml(),
+  res <- fixedRegress(mock_asreml(),
                          term = "Treatment:Genotype",
                          levs = c("T0","T1","T2"))
   expect_named(res$beta, c("T1","T2"))

@@ -1,5 +1,5 @@
 # tests/testthat/test-fixedRegressMV.R
-# Tests for fixedRegressMV() — no ASReml needed.
+# Tests for fixedRegress() — no ASReml needed.
 # We bypass the predict() call by injecting a synthetic pred object.
 
 library(stats)   # lm, residuals, etc.
@@ -36,18 +36,18 @@ make_fixed_pred <- function(
   list(pvals = pv)
 }
 
-# Patch predict() inside fixedRegressMV's environment
-make_patched_fixedRegressMV <- function(pred_obj) {
+# Patch predict() inside fixedRegress's environment
+make_patched_fixedRegress <- function(pred_obj) {
   # We create a wrapper that overrides predict inside the function scope
   function(...) {
     # Override the predict generic in the calling environment
-    env <- environment(fixedRegressMV)
+    env <- environment(fixedRegress)
     old_pred <- env$predict
     on.exit({
       if (is.null(old_pred)) rm("predict", envir = env) else env$predict <- old_pred
     })
     env$predict <- function(model, classify, ...) pred_obj
-    fixedRegressMV(...)
+    fixedRegress(...)
   }
 }
 
@@ -56,11 +56,11 @@ make_patched_fixedRegressMV <- function(pred_obj) {
 # ---------------------------------------------------------------------------
 test_that("levs < 2 stops with informative message", {
   expect_error(
-    fixedRegressMV(list(), levs = "T0"),
+    fixedRegress(list(), levs = "T0"),
     "At least two treatment levels"
   )
   expect_error(
-    fixedRegressMV(list(), levs = NULL),
+    fixedRegress(list(), levs = NULL),
     "At least two treatment levels"
   )
 })
@@ -215,7 +215,7 @@ test_that("custom type: .condList respects user-specified conditioning", {
 # ---------------------------------------------------------------------------
 # 10. Output structure from direct OLS: list with named elements
 # ---------------------------------------------------------------------------
-test_that("OLS result has expected structure analogous to fixedRegressMV", {
+test_that("OLS result has expected structure analogous to fixedRegress", {
   set.seed(50L)
   n   <- 20L
   T0  <- rnorm(n, 100, 10)

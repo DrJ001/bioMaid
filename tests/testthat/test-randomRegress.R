@@ -1,5 +1,5 @@
 # tests/testthat/test-randomRegressMV.R
-# Tests for randomRegressMV() — exercises the G-matrix algebra directly.
+# Tests for randomRegress() — exercises the G-matrix algebra directly.
 # No ASReml licence required.
 
 # ---------------------------------------------------------------------------
@@ -146,7 +146,7 @@ test_that("condList: partial conditions each on all others", {
 })
 
 # ---------------------------------------------------------------------------
-# 6. Validate output structure expected from randomRegressMV
+# 6. Validate output structure expected from randomRegress
 # ---------------------------------------------------------------------------
 test_that("blups data frame would have Site, Variety, and BLUP columns", {
   # Simulates what the function builds
@@ -233,14 +233,14 @@ test_that("TGmat dimnames include eff. and resp. prefixes", {
 # ---------------------------------------------------------------------------
 test_that("levs = NULL errors", {
   expect_error(
-    randomRegressMV(list(), levs = NULL),
+    randomRegress(list(), levs = NULL),
     "At least two treatment levels"
   )
 })
 
 test_that("levs with single element errors", {
   expect_error(
-    randomRegressMV(list(), levs = "N0"),
+    randomRegress(list(), levs = "N0"),
     "At least two treatment levels"
   )
 })

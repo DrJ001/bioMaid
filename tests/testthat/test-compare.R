@@ -44,7 +44,7 @@ manual_crit <- function(gind, vcov, type, alpha = 0.05, df_err = 100L) {
 }
 
 # ---------------------------------------------------------------------------
-# 1. .condList helper (internal, used by randomRegressMV & fixedRegressMV)
+# 1. .condList helper (internal, used by randomRegress & fixedRegress)
 # ---------------------------------------------------------------------------
 test_that(".condList baseline: first element NULL, rest conditioned on levs[1]", {
   cl <- biomAid:::.condList(c("N0","N1","N2"), "baseline", NULL)
