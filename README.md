@@ -29,36 +29,50 @@ remotes::install_github("DrJ001/biomAid")
 ### `compare()` — Pairwise comparison criteria
 
 Computes **HSD**, **LSD**, or **Bonferroni**-corrected LSD for predicted values
-from an ASReml-R V4 model, optionally within subgroups.
+from an ASReml-R V4 model, optionally within subgroups. Two predicted values in
+the same group are significantly different when their absolute difference exceeds
+the returned criterion value.
 
 ```r
-# Tukey HSD for Genotype within each Site
-res <- compare(model,
-               term  = "Treatment:Site:Genotype",
-               by    = "Site",
-               type  = "HSD")
+compare(model, term, by = NULL,
+        type  = c("HSD", "LSD", "Bonferroni"),
+        pev   = TRUE,
+        alpha = 0.05,
+        ...)
 ```
 
-Two predicted values in the same group are significantly different when their
-absolute difference exceeds the returned criterion value.
+| Argument | Description |
+|----------|-------------|
+| `model` | An ASReml-R V4 model object |
+| `term` | Classify string passed to `predict.asreml()` |
+| `by` | Column(s) to split comparisons by. `NULL` = one group |
+| `type` | `"HSD"` (default), `"LSD"`, or `"Bonferroni"` |
+| `pev` | `TRUE` (default) uses prediction error variance; `FALSE` uses posterior variance |
+| `alpha` | Significance level. Default `0.05` |
 
 ---
 
 ### `waldTest()` — Wald / F-tests on contrasts
 
-Tests linear contrasts of predicted values using predicted information from
-`predict.asreml()`. Supports pairwise, custom, and joint zero tests
-with optional p-value adjustment.
+Tests linear contrasts of predicted values using prediction error information
+from `predict.asreml()`. Supports pairwise, custom contrast matrix, and joint
+zero tests with optional p-value adjustment.
 
 ```r
-pred <- predict(model, classify = "Treatment", vcov = TRUE)
-
-waldTest(pred,
-         cc       = list(list(coef = c("N0","N1","N2"), type = "con", comp = "pairwise")),
-         test     = "F",
-         adjust   = "fdr",
-         df_error = model$nedf)
+waldTest(pred, cc, by = NULL,
+         test     = c("Wald", "F"),
+         df_error = NULL,
+         adjust   = c("none", "bonferroni", "holm", "fdr", "BH", "BY"))
 ```
+
+| Argument | Description |
+|----------|-------------|
+| `pred` | List returned by `predict(model, vcov = TRUE)` |
+| `cc` | Named list of test specifications (`coef`, `type`, `comp`, `group`) |
+| `by` | Column(s) to run tests within. `NULL` = single group |
+| `test` | `"Wald"` (default, χ² statistic) or `"F"` (requires `df_error`) |
+| `df_error` | Denominator degrees of freedom for F-tests (e.g. `model$nedf`) |
+| `adjust` | P-value adjustment method. Default `"none"` |
 
 ---
 
@@ -67,65 +81,52 @@ waldTest(pred,
 Produces a publication-ready forest plot from the output of `waldTest()`.
 Each contrast is shown as a filled circle with horizontal confidence interval
 bars. Points are coloured by **−log₁₀(p)**: non-significant results appear in
-grey, with a warm gradient from gold through to dark red as evidence
-strengthens. The raw p-value is printed beside each row.
+grey with a warm gradient from gold through to dark red as evidence strengthens.
+The raw p-value is printed beside each row.
 
 ```r
-res <- waldTest(pred,
-                cc = list(list(coef = c("N0","N1","N2"),
-                               type = "con",
-                               comp = "pairwise")))
-
-# Simple forest plot
-plot_waldTest(res)
-
-# By-group — one facet panel per site (default)
-res2 <- waldTest(pred_site,
-                 cc = list(list(coef = c("N0","N1","N2"),
-                                type = "con", comp = "pairwise")),
-                 by = "Site")
-plot_waldTest(res2, facet = TRUE)
-
-# All groups on one panel with separator lines
-plot_waldTest(res2, facet = FALSE)
-
-# 99% CI, stricter significance threshold
-plot_waldTest(res, ci_level = 0.99, alpha = 0.01)
+plot_waldTest(res,
+              facet       = TRUE,
+              ci_level    = 0.95,
+              alpha       = 0.05,
+              theme       = ggplot2::theme_bw(),
+              return_data = FALSE,
+              ...)
 ```
 
 | Argument | Description |
 |----------|-------------|
+| `res` | List returned by `waldTest()` |
 | `facet` | `TRUE` (default): one panel per `by`-group; `FALSE`: single panel |
 | `ci_level` | Confidence level for CI arms. Default `0.95` |
 | `alpha` | Significance threshold for colour-scale break. Default `0.05` |
+| `theme` | A ggplot2 theme object. Default `theme_bw()` |
 | `return_data` | `TRUE` returns the tidy data frame instead of the plot |
 
 ---
 
 ### `randomRegress()` — Random regression (BLUP-based)
 
-Decomposes Genotype x Environment x (Treatment/Trait) variety BLUP result from
-an ASReml-R v4 model to generate **responsiveness (or tolerance) indices** using
-a natural genetic regression that forms from Gaussian conditional distribution
-theory. Supports four conditioning schemes.
-
-| `type` | Description |
-|--------|-------------|
-| `"baseline"` | Each non-baseline treatment conditioned on `levs[1]` |
-| `"sequential"` | Gram-Schmidt orthogonalisation (diagonal TGmat) |
-| `"partial"` | Each treatment conditioned on all others simultaneously |
-| `"custom"` | User-specified conditioning sets |
+Decomposes Genotype × Environment × (Treatment/Trait) variety BLUPs from an
+ASReml-R V4 model into **efficiency and responsiveness indices** using a natural
+genetic regression derived from Gaussian conditional distribution theory.
+Supports four conditioning schemes.
 
 ```r
-res <- randomRegress(model,
-                     Env  = "TSite:Variety",
-                     levs = c("N0","N1","N2"),
-                     type = "sequential")
-
-res$blups    # Site x Variety BLUPs + responsiveness indices
-res$TGmat    # Transformed G-matrix
-res$beta     # Site-specific regression coefficients
+randomRegress(model, Env = "TSite:Variety", levs = NULL,
+              type = "baseline", cond = NULL,
+              sep = "-", pev = TRUE, ...)
 ```
+
+| Argument | Description |
+|----------|-------------|
+| `model` | An ASReml-R V4 model object |
+| `Env` | Classify string identifying the G-matrix term. Default `"TSite:Variety"` |
+| `levs` | Character vector of treatment levels to decompose |
+| `type` | `"baseline"`, `"sequential"`, `"partial"`, or `"custom"` |
+| `cond` | User-supplied conditioning list when `type = "custom"` |
+| `sep` | Separator between site and treatment in composite labels. Default `"-"` |
+| `pev` | `TRUE` (default) uses PEV; `FALSE` uses posterior variance |
 
 ---
 
@@ -136,73 +137,78 @@ types are available, each returned as a ggplot object that can be further
 customised with `+`.
 
 ```r
-# Regression scatter — per-site BLUPs with site-specific β line
-plot_randomRegress(res, type = "regress")
-
-# Quadrant plot — efficiency (x) vs responsiveness (y)
-plot_randomRegress(res, type = "quadrant")
-
-# G-matrix correlation heatmap
-plot_randomRegress(res, type = "gmat")
-
-# Highlight six archetypal varieties (3 top-right, 3 bottom-left)
-plot_randomRegress(res, type = "quadrant", highlight = "default")
+plot_randomRegress(res,
+                   type        = c("regress", "quadrant", "gmat"),
+                   treatments  = NULL,
+                   highlight   = "default",
+                   centre      = FALSE,
+                   theme       = ggplot2::theme_bw(),
+                   return_data = FALSE,
+                   ...)
 ```
 
 | Argument | Description |
 |----------|-------------|
+| `res` | List returned by `randomRegress()` |
 | `type` | `"regress"`, `"quadrant"`, or `"gmat"` |
-| `treatments` | Character vector to restrict conditioning pairs plotted |
-| `highlight` | `"default"` auto-selects 6 archetypes; `NULL` no highlighting |
-| `centre` | `TRUE` adds back within-site means (useful for demo data) |
+| `treatments` | Character vector to restrict conditioning pairs plotted. `NULL` = all |
+| `highlight` | `"default"` auto-selects 6 archetypes; `NULL` = no highlighting |
+| `centre` | `TRUE` adds back within-site means (useful for demo data). Default `FALSE` |
+| `theme` | A ggplot2 theme object. Default `theme_bw()` |
 | `return_data` | `TRUE` returns the tidy data frame instead of the plot |
 
 ---
 
 ### `fixedRegress()` — Fixed regression (BLUE-based)
 
-The fixed-effects analogue of `randomRegress()`. Regresses treatment BLUEs
-via OLS within each group and returns **response or tolerance indices** for
-every genotype. The same four conditioning schemes are available.
+The fixed-effects analogue of `randomRegress()`. Regresses treatment BLUEs via
+OLS within each group and returns **efficiency and response indices** for every
+genotype. The same four conditioning schemes are available.
 
 ```r
-res <- fixedRegress(model,
-                    term = "Treatment:Site:Genotype",
-                    by   = "Site",
-                    levs = c("N0","N1","N2"),
-                    type = "baseline")
-
-res$blues    # BLUEs + response indices + HSD per group
-res$beta     # OLS regression coefficients per group
+fixedRegress(model, term = "Treatment:Genotype",
+             by = NULL, levs = NULL,
+             type = "baseline", cond = NULL,
+             min_obs = NULL, ...)
 ```
+
+| Argument | Description |
+|----------|-------------|
+| `model` | An ASReml-R V4 model object |
+| `term` | Classify string passed to `predict.asreml()`. Default `"Treatment:Genotype"` |
+| `by` | Column(s) defining groups for separate regressions |
+| `levs` | Character vector of treatment levels to decompose |
+| `type` | `"baseline"`, `"sequential"`, `"partial"`, or `"custom"` |
+| `cond` | User-supplied conditioning list when `type = "custom"` |
+| `min_obs` | Minimum common genotypes required to fit a regression. `NULL` = auto |
 
 ---
 
 ### `plot_fixedRegress()` — Visualise fixed regression results
 
-Generates ggplot2 visualisations from `fixedRegress()` output. Two plot
-types are available, each returned as a ggplot object.
+Generates ggplot2 visualisations from `fixedRegress()` output. Two plot types
+are available, each returned as a ggplot object that can be further customised
+with `+`.
 
 ```r
-# Regression scatter — BLUEs with OLS regression line per group
-plot_fixedRegress(res, type = "regress")
-
-# Quadrant plot — efficiency (x) vs response index (y)
-plot_fixedRegress(res, type = "quadrant")
-
-# Custom significance highlighting
-plot_fixedRegress(res, type = "quadrant", highlight = "default")
-
-# Raw (uncentred) axes
-plot_fixedRegress(res, type = "regress", centre = FALSE)
+plot_fixedRegress(res,
+                  type        = c("regress", "quadrant"),
+                  treatments  = NULL,
+                  highlight   = "default",
+                  centre      = TRUE,
+                  theme       = ggplot2::theme_bw(),
+                  return_data = FALSE,
+                  ...)
 ```
 
 | Argument | Description |
 |----------|-------------|
+| `res` | List returned by `fixedRegress()` |
 | `type` | `"regress"` or `"quadrant"` |
-| `treatments` | Character vector to restrict conditioning pairs plotted |
-| `highlight` | `"default"` auto-selects 6 archetypes; `NULL` no highlighting |
-| `centre` | `TRUE` (default) subtracts within-group means; `FALSE` raw BLUEs |
+| `treatments` | Character vector to restrict conditioning pairs plotted. `NULL` = all |
+| `highlight` | `"default"` auto-selects 6 archetypes; `NULL` = no highlighting |
+| `centre` | `TRUE` (default) subtracts within-group means; `FALSE` = raw BLUEs |
+| `theme` | A ggplot2 theme object. Default `theme_bw()` |
 | `return_data` | `TRUE` returns the tidy data frame instead of the plot |
 
 ---
@@ -215,29 +221,28 @@ target plot types, and pads any missing interior grid positions with blank rows.
 Useful for preparing irregular trial layouts for spatial analysis.
 
 ```r
-res <- padTrial(data,
-                pattern    = "Row:Column",
-                match      = "DH",
-                split      = "Block",
-                pad        = TRUE,
-                keep       = "Block",
-                fill_value = "Blank",
-                type_col   = "Type",
-                verbose    = TRUE)
+padTrial(data,
+         pattern    = "Row:Column",
+         match      = "DH",
+         split      = "Block",
+         pad        = TRUE,
+         keep       = split,
+         fill_value = "Blank",
+         type_col   = "Type",
+         verbose    = FALSE)
 ```
 
 | Argument | Description |
 |----------|-------------|
-| `pattern` | `"Row:Column"` — names of the spatial coordinate columns |
-| `match` | Plot type(s) to include (e.g. `"DH"`, `c("DH","Check")`) |
-| `split` | Column(s) to split by (e.g. `"Block"`, `c("Site","Block")`); `NULL` = whole dataset |
+| `data` | Data frame containing the trial layout |
+| `pattern` | Colon-separated names of the spatial coordinate columns. Default `"Row:Column"` |
+| `match` | Plot type(s) defining the target sub-trial (e.g. `"DH"`, `c("DH","Check")`) |
+| `split` | Column(s) to process independently (e.g. `"Block"`); `NULL` = whole dataset |
 | `pad` | `TRUE` (default) inserts blank rows for missing grid cells |
-| `keep` | Column(s) whose values are carried into padded rows |
-| `fill_value` | String written into all character/factor columns of padded rows |
+| `keep` | Column(s) whose values are carried into padded rows. Defaults to `split` |
+| `fill_value` | String written into character/factor columns of padded rows. Default `"Blank"` |
+| `type_col` | Name of the plot-type column. Default `"Type"` |
 | `verbose` | `TRUE` prints a per-group summary message |
-
-The result is a data frame with an `add` column: `"old"` for original rows,
-`"new"` for padded rows. Row and Column are returned as ascending factors.
 
 ---
 
@@ -249,25 +254,26 @@ appear in light grey. When `data` is supplied the Before panel shows the
 complete original layout including guard rows.
 
 ```r
-# Basic — Before reconstructed from result (gaps show where missing cells were)
-plot_padTrial(res)
-
-# Supply original data to show guard rows in Before panel
-plot_padTrial(res, data = trial_data)
-
-# Multi-block: groups as columns, Before/After as rows
-plot_padTrial(res, data = trial_data, split = "Block")
-
-# Label each tile with the genotype name
-plot_padTrial(res, label = "Geno")
+plot_padTrial(result,
+              data        = NULL,
+              type_col    = "Type",
+              pattern     = "Row:Column",
+              split       = NULL,
+              label       = NULL,
+              theme       = ggplot2::theme_bw(),
+              return_data = FALSE,
+              ...)
 ```
 
 | Argument | Description |
 |----------|-------------|
+| `result` | Data frame returned by `padTrial()` |
 | `data` | Original data passed to `padTrial()`. `NULL` (default) reconstructs Before from result |
-| `type_col` | Column used to colour tiles. Default `"Type"` |
+| `type_col` | Name of the plot-type column used to colour tiles. Default `"Type"` |
+| `pattern` | Colon-separated names of the spatial coordinate columns. Default `"Row:Column"` |
 | `split` | Grouping column(s) matching the `split` used in `padTrial()` |
 | `label` | Column whose values are printed inside each tile. `NULL` = no labels |
+| `theme` | A ggplot2 theme object. Default `theme_bw()` |
 | `return_data` | `TRUE` returns the tidy data frame instead of the plot |
 
 ---
@@ -278,15 +284,18 @@ Implements the **FAST** (Smith & Cullis 2018) and **iClass** (Smith et al. 2021)
 approaches for summarising variety performance from an FA mixed model.
 
 ```r
-res <- fast(model,
-            term   = "fa(Site, 3):Genotype",
-            type   = "all",
-            ic.num = 2L)
-
-# Columns: Site, Genotype, loads1..k, score1..k, CVE, VE,
-#          OP, dev, stab (FAST)
-#          iclass, iClassOP, iClassRMSD (iClass)
+fast(model, term = "fa(Site, 4):Genotype",
+     type   = c("all", "FAST", "iClass"),
+     ic.num = 2L,
+     ...)
 ```
+
+| Argument | Description |
+|----------|-------------|
+| `model` | An ASReml-R V4 model object |
+| `term` | FA model term string. Default `"fa(Site, 4):Genotype"` |
+| `type` | `"all"` (default), `"FAST"`, or `"iClass"` |
+| `ic.num` | Number of interaction class factors (1 to k). Default `2` |
 
 ---
 
@@ -296,15 +305,56 @@ Generates a balanced split-plot dataset for testing and demonstration, with
 known ground-truth genetic parameters for comparison against model estimates.
 
 ```r
-out <- simTrialData(nvar       = 20,
-                    nsite      = 10,
-                    treatments = c("N0","N1","N2"),
-                    seed       = 2024,
-                    verbose    = TRUE)
-
-out$data          # plot-level data frame
-out$params$beta   # true site-specific regression coefficients
+simTrialData(nvar           = 20L,
+             nsite          = 10L,
+             treatments     = c("N0", "N1", "N2"),
+             nrep           = 3L,
+             rows_per_strip = NULL,
+             cols_per_strip = NULL,
+             site_mean      = 4500,
+             site_sd        = 600,
+             treat_effects  = NULL,
+             sigma_base     = 250,
+             sigr           = NULL,
+             beta_min       = NULL,
+             beta_max       = NULL,
+             rep_sd         = 150,
+             row_sd         = 80,
+             col_sd         = 60,
+             error_sd       = 350,
+             sep            = "-",
+             variety_prefix = "Var",
+             site_prefix    = "Env",
+             seed           = NULL,
+             outfile        = NULL,
+             verbose        = TRUE)
 ```
+
+| Argument | Description |
+|----------|-------------|
+| `nvar` | Number of varieties. Default `20` |
+| `nsite` | Number of sites. Default `10` |
+| `treatments` | Character vector of treatment labels. Default `c("N0","N1","N2")` |
+| `nrep` | Number of replicates per site. Default `3` |
+| `rows_per_strip` | Rows per treatment strip. `NULL` = auto |
+| `cols_per_strip` | Columns per treatment strip. `NULL` = auto |
+| `site_mean` | Mean yield across sites. Default `4500` |
+| `site_sd` | Site-to-site SD. Default `600` |
+| `treat_effects` | Named numeric vector of treatment mean shifts. `NULL` = auto |
+| `sigma_base` | Base genetic SD. Default `250` |
+| `sigr` | Per-treatment residual SDs. `NULL` = auto |
+| `beta_min` | Minimum regression coefficient. `NULL` = auto |
+| `beta_max` | Maximum regression coefficient. `NULL` = auto |
+| `rep_sd` | Replicate effect SD. Default `150` |
+| `row_sd` | Row spatial effect SD. Default `80` |
+| `col_sd` | Column spatial effect SD. Default `60` |
+| `error_sd` | Residual error SD. Default `350` |
+| `sep` | Separator for composite site-treatment labels. Default `"-"` |
+| `variety_prefix` | Prefix for variety labels. Default `"Var"` |
+| `site_prefix` | Prefix for site labels. Default `"Env"` |
+| `seed` | Random seed for reproducibility. `NULL` = no fixed seed |
+| `outfile` | Optional path to write the simulated data as a CSV |
+| `verbose` | `TRUE` (default) prints simulation progress |
 
 ---
 
