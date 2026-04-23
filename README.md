@@ -241,6 +241,37 @@ The result is a data frame with an `add` column: `"old"` for original rows,
 
 ---
 
+### `plot_padTrial()` — Before/after field layout tile map
+
+Visualises the effect of `padTrial()` as a pair of tile maps — **Before** on
+top, **After** below. Tiles are coloured by plot type; inserted (padded) cells
+appear in light grey. When `data` is supplied the Before panel shows the
+complete original layout including guard rows.
+
+```r
+# Basic — Before reconstructed from result (gaps show where missing cells were)
+plot_padTrial(res)
+
+# Supply original data to show guard rows in Before panel
+plot_padTrial(res, data = trial_data)
+
+# Multi-block: groups as columns, Before/After as rows
+plot_padTrial(res, data = trial_data, split = "Block")
+
+# Label each tile with the genotype name
+plot_padTrial(res, label = "Geno")
+```
+
+| Argument | Description |
+|----------|-------------|
+| `data` | Original data passed to `padTrial()`. `NULL` (default) reconstructs Before from result |
+| `type_col` | Column used to colour tiles. Default `"Type"` |
+| `split` | Grouping column(s) matching the `split` used in `padTrial()` |
+| `label` | Column whose values are printed inside each tile. `NULL` = no labels |
+| `return_data` | `TRUE` returns the tidy data frame instead of the plot |
+
+---
+
 ### `fast()` — Factor Analytic Selection Tools
 
 Implements the **FAST** (Smith & Cullis 2018) and **iClass** (Smith et al. 2021)
