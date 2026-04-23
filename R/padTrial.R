@@ -165,6 +165,7 @@ padTrial <- function(data,
         message(lbl, ": no rows matching match = \"",
                 paste(match, collapse = "/"), "\" -- group returned unchanged.")
       block[[GRP_COL]] <- NULL
+      block$add <- "old"
       return(block)
     }
 
