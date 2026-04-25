@@ -68,7 +68,7 @@ the vector of $n$ predicted (BLUEs or BLUPs) treatment effects, obtained
 from a mixed model with prediction error variance–covariance matrix
 
 $$
-\text{Var}(\hat{\boldsymbol{\tau}} - \boldsymbol{\tau}) = \mathbf{V}_{\hat{\tau}}.
+\text{Var}(\hat{\boldsymbol{\tau}} - \boldsymbol{\tau}) = \mathbf{V}_{\hat{\boldsymbol{\tau}}}.
 $$
 
 In ASReml-R V4 this is returned by
@@ -79,9 +79,9 @@ In ASReml-R V4 this is returned by
 ### Contrast tests
 
 A **contrast** is a linear combination
-$c = \mathbf{c}^\top\hat{\boldsymbol{\tau}}$ where $\mathbf{c}$ is a
-real-valued vector (not required to sum to zero in general, though
-pairwise differences do). The null hypothesis is
+$\hat{c} = \mathbf{c}^\top\hat{\boldsymbol{\tau}}$ where $\mathbf{c}$ is
+a real-valued contrast vector (not required to sum to zero in general,
+though pairwise differences do). The null hypothesis is
 
 $$
 H_0: \mathbf{c}^\top\boldsymbol{\tau} = 0.
@@ -91,15 +91,15 @@ The estimated contrast and its standard error are
 
 $$
 \hat{c} = \mathbf{c}^\top\hat{\boldsymbol{\tau}}, \qquad
-\text{SE}(\hat{c}) = \sqrt{\mathbf{c}^\top \mathbf{V}_{\hat{\tau}} \mathbf{c}}.
+\text{SE}(\hat{c}) = \sqrt{\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}.
 $$
 
 The **Wald statistic** is
 
 $$
-W = \frac{\hat{c}^2}{\mathbf{c}^\top \mathbf{V}_{\hat{\tau}} \mathbf{c}}
+W = \frac{\hat{c}^2}{\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}
     = \frac{(\mathbf{c}^\top\hat{\boldsymbol{\tau}})^2}
-           {\mathbf{c}^\top \mathbf{V}_{\hat{\tau}} \mathbf{c}}
+           {\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}
     \;\overset{H_0}{\sim}\; \chi^2_1.
 $$
 
@@ -116,7 +116,9 @@ zeros elsewhere, so
 
 $$
 \hat{c}_{ij} = \hat{\tau}_i - \hat{\tau}_j, \qquad
-\text{Var}(\hat{c}_{ij}) = V_{ii} - 2V_{ij} + V_{jj}.
+\text{Var}(\hat{c}_{ij}) = [\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{ii}
+  - 2[\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{ij}
+  + [\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{jj}.
 $$
 
 Setting `comp = "pairwise"` in `waldTest()` generates all $\binom{k}{2}$
@@ -126,11 +128,12 @@ contrasts automatically.
 
 Multiple contrasts can be tested in a single call by supplying a
 contrast **matrix** $\mathbf{C}$ (rows = contrasts, columns = levels).
-Each row is tested independently:
+Each row $\mathbf{c}_r^\top$ is tested independently:
 
 $$
 W_r = \frac{(\mathbf{c}_r^\top\hat{\boldsymbol{\tau}})^2}
-           {\mathbf{c}_r^\top \mathbf{V}_{\hat{\tau}} \mathbf{c}_r}, \quad r = 1, \ldots, m.
+           {\mathbf{c}_r^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}_r},
+      \quad r = 1, \ldots, m.
 $$
 
 ------------------------------------------------------------------------
@@ -150,7 +153,7 @@ The Wald statistic is
 
 $$
 W = \hat{\boldsymbol{\tau}}^\top \mathbf{Z}^\top
-    \bigl(\mathbf{Z}\,\mathbf{V}_{\hat{\tau}}\,\mathbf{Z}^\top\bigr)^{-1}
+    \bigl(\mathbf{Z}\,\mathbf{V}_{\hat{\boldsymbol{\tau}}}\,\mathbf{Z}^\top\bigr)^{-1}
     \mathbf{Z}\hat{\boldsymbol{\tau}}
     \;\overset{H_0}{\sim}\; \chi^2_q,
 $$
