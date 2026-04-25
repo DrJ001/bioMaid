@@ -1,0 +1,653 @@
+---
+title: "Wald Tests on Fixed-Effect Contrasts"
+subtitle: "`waldTest()` and `plot_waldTest()`"
+author: "biomAid package"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: false
+    smooth-scroll: true
+    embed-resources: false
+    theme: cosmo
+    highlight-style: github
+    mainfont: "Source Serif 4, Georgia, serif"
+    monofont: "Fira Code, monospace"
+    code-fold: false
+    fig-width: 7
+    fig-height: 4
+    fig-dpi: 150
+    html-math-method: katex
+execute:
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(biomAid)
+library(ggplot2)
+```
+
+---
+
+## Overview
+
+`waldTest()` performs **Wald tests on linear contrasts of predicted values**
+obtained from `predict()`. Because it works entirely from a prediction list
+(predicted values + prediction error variance–covariance matrix), it requires no
+access to model internals and works with any mixed-model software that exposes a
+`vcov`-style prediction object — including ASReml-R V4.
+
+Two complementary test types are available:
+
+| Type | Null hypothesis | Use case |
+|------|----------------|----------|
+| `"con"` — contrast | $H_0: \mathbf{c}^\top\hat{\boldsymbol{\tau}} = 0$ | Pairwise, treatment vs control, custom comparisons |
+| `"zero"` — joint zero | $H_0: \mathbf{Z}\hat{\boldsymbol{\tau}} = \mathbf{0}$ | Are a set of effects simultaneously zero? |
+
+The companion function `plot_waldTest()` produces a publication-ready forest
+plot directly from the result.
+
+---
+
+## Mathematical Framework
+
+### Predicted values and their variance
+
+Let $\hat{\boldsymbol{\tau}} = (\hat{\tau}_1, \ldots, \hat{\tau}_n)^\top$ be the
+vector of $n$ predicted treatment effects (BLUEs or BLUPs), obtained from a
+mixed model with prediction error variance–covariance matrix
+
+$$
+\operatorname{Var}(\hat{\boldsymbol{\tau}} - \boldsymbol{\tau})
+  = \mathbf{V}_{\hat{\boldsymbol{\tau}}}.
+$$
+
+In ASReml-R V4 this is returned by
+`predict(model, classify = ..., vcov = TRUE)$vcov`.
+
+---
+
+### Contrast tests
+
+A **contrast** is a scalar linear combination
+$\hat{c} = \mathbf{c}^\top\hat{\boldsymbol{\tau}}$
+where $\mathbf{c}$ is a user-specified contrast vector. The null hypothesis is
+
+$$
+H_0: \mathbf{c}^\top\boldsymbol{\tau} = 0.
+$$
+
+The estimated contrast and its standard error are
+
+$$
+\hat{c} = \mathbf{c}^\top\hat{\boldsymbol{\tau}},
+\qquad
+\operatorname{SE}(\hat{c})
+  = \sqrt{\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}.
+$$
+
+The **Wald statistic** is
+
+$$
+W = \frac{\hat{c}^2}
+         {\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}
+  = \frac{\bigl(\mathbf{c}^\top\hat{\boldsymbol{\tau}}\bigr)^2}
+         {\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}
+  \;\overset{H_0}{\sim}\; \chi^2_1.
+$$
+
+When an error degrees of freedom $\nu$ is available (e.g. from a mixed model),
+the **F-statistic** $F = W$ is referred to an $F_{1,\nu}$ distribution,
+providing better finite-sample calibration.
+
+#### Pairwise contrasts
+
+For $k$ treatment levels the $\binom{k}{2}$ pairwise differences are a
+convenient special case. For levels $i$ and $j$, the contrast vector
+$\mathbf{c}_{ij}$ has $+1$ in position $i$, $-1$ in position $j$, and zeros
+elsewhere, so
+
+$$
+\hat{c}_{ij} = \hat{\tau}_i - \hat{\tau}_j,
+\qquad
+\operatorname{Var}(\hat{c}_{ij})
+  = [\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{ii}
+  - 2[\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{ij}
+  + [\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{jj}.
+$$
+
+Setting `comp = "pairwise"` in `waldTest()` generates all $\binom{k}{2}$
+contrasts automatically.
+
+#### Custom contrast matrices
+
+Multiple contrasts can be tested in a single call by supplying a contrast
+**matrix** $\mathbf{C}$ (rows = contrasts, columns = levels). Each row
+$\mathbf{c}_r^\top$ is tested independently:
+
+$$
+W_r
+  = \frac{\bigl(\mathbf{c}_r^\top\hat{\boldsymbol{\tau}}\bigr)^2}
+         {\mathbf{c}_r^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}_r},
+  \quad r = 1, \ldots, m.
+$$
+
+---
+
+### Joint zero tests
+
+A **joint zero test** simultaneously tests whether a subset of $q$ effects are
+all zero. Define the selection matrix $\mathbf{Z}$ ($q \times n$) with a single
+$1$ per row selecting the coefficients of interest. The null hypothesis is
+
+$$
+H_0: \mathbf{Z}\boldsymbol{\tau} = \mathbf{0}.
+$$
+
+The Wald statistic is
+
+$$
+W = \hat{\boldsymbol{\tau}}^\top \mathbf{Z}^\top
+    \bigl(\mathbf{Z}\,\mathbf{V}_{\hat{\boldsymbol{\tau}}}\,\mathbf{Z}^\top\bigr)^{-1}
+    \mathbf{Z}\hat{\boldsymbol{\tau}}
+    \;\overset{H_0}{\sim}\; \chi^2_q,
+$$
+
+or $F = W / q \sim F_{q,\nu}$ for the F-test form.
+
+---
+
+### P-value adjustment
+
+When many contrasts are tested the family-wise error rate (FWER) or false
+discovery rate (FDR) inflates. `waldTest()` passes all raw p-values within each
+group to `p.adjust()`. The key options are:
+
+| Method | Controls | Best used when |
+|--------|----------|----------------|
+| `"none"` | — | Exploratory or single contrast |
+| `"bonferroni"` | FWER (conservative) | Few contrasts, strict control needed |
+| `"holm"` | FWER (less conservative) | Few to moderate contrasts |
+| `"fdr"` / `"BH"` | FDR | Many contrasts, some true effects expected |
+| `"BY"` | FDR (arbitrary dependence) | Dependent test statistics |
+
+---
+
+## Setup
+
+### Simulated data — four nitrogen treatments
+
+We simulate a prediction object for four nitrogen treatments with a known
+increasing yield response. This mirrors the structure returned by
+`predict(model, classify = "Treatment", vcov = TRUE)` from ASReml-R V4.
+
+```{r simulate_simple}
+set.seed(42L)
+
+treatments <- c("Control", "LowN", "MidN", "HighN")
+n          <- length(treatments)
+mu         <- c(45, 52, 61, 67)   # known increasing trend
+
+# Predicted values data frame
+pv <- data.frame(
+  Treatment       = factor(treatments, levels = treatments),
+  predicted.value = mu + stats::rnorm(n, 0, 2),
+  std.error       = stats::runif(n, 1.5, 3.5),
+  status          = factor(rep("Estimable", n)),
+  stringsAsFactors = FALSE
+)
+
+# Prediction error variance–covariance matrix
+A    <- matrix(stats::rnorm(n^2, 0, 0.4), n, n)
+vcov <- crossprod(A) + diag(c(4, 5, 5, 6))
+
+pred <- list(pvals = pv, vcov = vcov)
+```
+
+The predicted values and their standard errors:
+
+```{r show_pv}
+pv[, c("Treatment", "predicted.value", "std.error")]
+```
+
+---
+
+## Example 1: Pairwise contrasts
+
+The most common use case — test all $\binom{4}{2} = 6$ pairwise differences
+among the nitrogen treatments. Setting `comp = "pairwise"` generates the full
+contrast matrix automatically.
+
+```{r pairwise}
+res1 <- waldTest(
+  pred,
+  cc = list(
+    list(coef = treatments, type = "con", comp = "pairwise")
+  )
+)
+
+res1$Contrasts
+```
+
+`Comparison` reads as `"A vs B"` where `A` carries the positive coefficient
+(i.e. $\hat{\tau}_A - \hat{\tau}_B$). `Wald.Statistic` =
+$\hat{c}^2 / \widehat{\operatorname{Var}}(\hat{c})$; `df = 1` for all
+single-contrast rows; `P.Value` is from $\chi^2_1$.
+
+The `HighN vs Control` contrast should be the most significant, reflecting the
+largest mean difference in the simulated data.
+
+---
+
+## Example 2: Manual contrast vector
+
+A **manual contrast** lets you specify exactly which comparison to make and how
+to label it. Here we test HighN minus Control using
+$\mathbf{c} = (-1,\; 0,\; 0,\; 1)^\top$ — one element per level in `coef` order.
+
+```{r manual_vector}
+res2 <- waldTest(
+  pred,
+  cc = list(
+    list(
+      coef  = treatments,
+      type  = "con",
+      comp  = c(-1, 0, 0, 1),     # HighN - Control
+      group = list(left = "HighN", right = "Control")
+    )
+  )
+)
+
+res2$Contrasts
+```
+
+The `group` argument overrides the auto-generated label so the output reads
+`"HighN vs Control"`.
+
+---
+
+## Example 3: Custom contrast matrix
+
+A contrast **matrix** $\mathbf{C}$ (rows = contrasts, columns = levels) tests
+multiple specific comparisons in one call. Here we fit three polynomial contrasts
+across the four equally-spaced nitrogen levels.
+
+```{r manual_matrix}
+# Orthogonal polynomial contrasts for 4 equally-spaced levels
+C_poly <- matrix(
+  c(-3, -1,  1,  3,   # linear trend
+     1, -1, -1,  1,   # quadratic trend
+    -1,  3, -3,  1),  # cubic trend
+  nrow = 3, byrow = TRUE
+)
+
+res3 <- waldTest(
+  pred,
+  cc = list(
+    list(
+      coef  = treatments,
+      type  = "con",
+      comp  = C_poly,
+      group = list(left  = c("Linear", "Quadratic", "Cubic"),
+                   right = c("trend",  "trend",     "trend"))
+    )
+  )
+)
+
+res3$Contrasts
+```
+
+For a monotone nitrogen response we expect a strong **linear trend** and
+negligible quadratic or cubic components.
+
+---
+
+## Example 4: Joint zero test
+
+A joint zero test asks: *are these effects simultaneously equal to zero?*
+This uses `type = "zero"` and tests the $q$-dimensional null
+$H_0: \mathbf{Z}\boldsymbol{\tau} = \mathbf{0}$.
+
+Here we test whether the three non-Control treatment effects are jointly zero —
+i.e. does nitrogen application have any effect at all?
+
+```{r zero_test}
+res4 <- waldTest(
+  pred,
+  cc = list(
+    list(
+      coef  = c("LowN", "MidN", "HighN"),
+      type  = "zero",
+      group = "Nitrogen joint zero"
+    )
+  )
+)
+
+res4$Zero
+```
+
+`df = 3` because three effects are tested simultaneously. The statistic follows
+$\chi^2_3$ under $H_0$.
+
+---
+
+## Example 5: Combining contrast and zero tests
+
+Both test types can be combined in a single `cc` list. Results are returned
+in separate `$Contrasts` and `$Zero` slots.
+
+```{r combined}
+res5 <- waldTest(
+  pred,
+  cc = list(
+    list(coef = treatments,
+         type = "con", comp = "pairwise"),
+    list(coef  = c("LowN", "MidN", "HighN"),
+         type  = "zero",
+         group = "Nitrogen joint zero")
+  )
+)
+
+cat("--- Contrasts ---\n")
+res5$Contrasts
+
+cat("\n--- Zero test ---\n")
+res5$Zero
+```
+
+---
+
+## Example 6: By-group testing
+
+When predictions span multiple environments (e.g. a `Treatment:Site` classify),
+the `by` argument runs the same `cc` specification independently within each
+group. The grouping column is prepended to both output tables.
+
+```{r by_group_data}
+set.seed(123L)
+sites <- c("Site1", "Site2", "Site3")
+
+make_site_pv <- function(site, seed) {
+  set.seed(seed)
+  data.frame(
+    Treatment       = factor(treatments, levels = treatments),
+    Site            = factor(site),
+    predicted.value = mu + stats::rnorm(n, 0, 8),
+    std.error       = stats::runif(n, 1.5, 4.0),
+    status          = factor(rep("Estimable", n)),
+    stringsAsFactors = FALSE
+  )
+}
+
+all_pv <- do.call(rbind, mapply(make_site_pv, sites, c(1L, 2L, 3L),
+                                SIMPLIFY = FALSE))
+n_tot  <- nrow(all_pv)
+
+# Block-diagonal vcov — sites are independent
+vcov3 <- matrix(0, n_tot, n_tot)
+for (i in seq_along(sites)) {
+  idx <- ((i - 1L) * n + 1L):(i * n)
+  set.seed(i * 10L)
+  Ai  <- matrix(stats::rnorm(n^2, 0, 0.4), n, n)
+  vcov3[idx, idx] <- crossprod(Ai) + diag(stats::runif(n, 3, 7))
+}
+
+pred3 <- list(pvals = all_pv, vcov = vcov3)
+```
+
+```{r by_group_test}
+res6 <- waldTest(
+  pred3,
+  cc = list(
+    list(coef = treatments, type = "con", comp = "pairwise")
+  ),
+  by = "Site"
+)
+
+res6$Contrasts
+```
+
+The `Site` column identifies which group each contrast belongs to.
+The `coef` labels always refer to **within-group** row positions.
+
+### Multi-factor `by`
+
+When predictions cross two or more factors (e.g. `Treatment:Site:Year`),
+pass a character vector to `by`. The levels are pasted into a composite
+key and the output column is named accordingly:
+
+```{r multi_by}
+#| eval: false
+# Illustrative — would require a Treatment:Site:Year classify
+res_sy <- waldTest(
+  pred_site_year,
+  cc = list(list(coef = treatments, type = "con", comp = "pairwise")),
+  by = c("Site", "Year")
+)
+# Output column named "Site:Year"
+```
+
+---
+
+## Example 7: F-tests
+
+When an error degrees of freedom $\nu$ is available (e.g. `model$nedf` from
+ASReml-R), replacing the asymptotic $\chi^2$ with an $F_{1,\nu}$ distribution
+gives better-calibrated p-values in small samples. Set `test = "F"` and supply
+`df_error`.
+
+```{r f_test}
+# Simulate a realistic denominator df (e.g. from a field trial model)
+df_error_sim <- 54L
+
+res7 <- waldTest(
+  pred,
+  cc       = list(list(coef = treatments, type = "con", comp = "pairwise")),
+  test     = "F",
+  df_error = df_error_sim
+)
+
+res7$Contrasts
+```
+
+The column is now `F.Statistic` (= Wald statistic for single contrasts).
+P-values are from $F_{1,54}$ rather than $\chi^2_1$ — slightly more
+conservative in small samples.
+
+---
+
+## Example 8: P-value adjustment
+
+With $\binom{4}{2} = 6$ pairwise comparisons the chance of at least one false
+positive is inflated. The `adjust` argument applies `p.adjust()` across all
+contrasts within each group.
+
+```{r adjustment}
+# Bonferroni
+res_bon <- waldTest(pred,
+                    cc     = list(list(coef = treatments, type = "con",
+                                       comp = "pairwise")),
+                    adjust = "bonferroni")
+
+# FDR (Benjamini–Hochberg)
+res_fdr <- waldTest(pred,
+                    cc     = list(list(coef = treatments, type = "con",
+                                       comp = "pairwise")),
+                    adjust = "fdr")
+
+cat("--- Bonferroni adjusted ---\n")
+res_bon$Contrasts[, c("Comparison", "P.Value")]
+
+cat("\n--- FDR (BH) adjusted ---\n")
+res_fdr$Contrasts[, c("Comparison", "P.Value")]
+```
+
+Bonferroni multiplies each p-value by the number of tests (capped at 1); FDR is
+less conservative and generally preferred when many contrasts are tested and some
+true effects are expected.
+
+---
+
+## Forest plots with `plot_waldTest()`
+
+`plot_waldTest()` turns a `waldTest()` result directly into a forest plot. Each
+contrast is shown as a filled circle with horizontal confidence interval bars.
+Points are coloured by $-\log_{10}(p)$: non-significant results appear in grey;
+significant results follow a warm gradient from gold through orange to dark red
+as evidence strengthens. The raw p-value is printed beside each row.
+
+### Basic forest plot
+
+```{r forest_basic}
+#| fig-height: 5
+p1 <- plot_waldTest(res1)
+print(p1)
+```
+
+The vertical dashed line at $x = 0$ is the reference for no difference. The
+colour bar maps $-\log_{10}(p)$ — results in the warm-gradient zone are
+significant at `alpha = 0.05`.
+
+### By-group with faceting (`facet = TRUE`)
+
+When `waldTest()` was called with `by`, `facet = TRUE` (the default) produces
+one panel per group with free y-scales, making it easy to compare effect sizes
+across environments.
+
+```{r forest_facet}
+#| fig-height: 9
+p_facet <- plot_waldTest(res6, facet = TRUE)
+print(p_facet)
+```
+
+### By-group on one panel (`facet = FALSE`)
+
+`facet = FALSE` places all groups on a single panel with dotted horizontal
+separator lines between groups. Useful for compact side-by-side comparison when
+the number of contrasts per group is small.
+
+```{r forest_nofacet}
+#| fig-height: 7
+p_single <- plot_waldTest(res6, facet = FALSE)
+print(p_single)
+```
+
+### Adjusting the CI level and significance threshold
+
+`ci_level` controls the width of the CI arms; `alpha` shifts the colour-scale
+break between grey (non-significant) and the warm gradient.
+
+```{r forest_ci99}
+#| fig-height: 5
+# 99% CI arms; stricter significance threshold
+p_99 <- plot_waldTest(res1, ci_level = 0.99, alpha = 0.01)
+print(p_99)
+```
+
+### Extracting the plot data
+
+`return_data = TRUE` returns the tidy data frame used internally to build the
+plot, giving full control for bespoke customisation.
+
+```{r return_data}
+df <- plot_waldTest(res1, return_data = TRUE)
+df[, c("label", "Estimate", "CI_lower", "CI_upper", "P.Value",
+       "neg_log10_p", "significant", "p_label")]
+```
+
+The ggplot object can be extended with `+` in the usual way:
+
+```{r bespoke}
+#| fig-height: 5
+p_custom <- plot_waldTest(res1) +
+  ggplot2::ggtitle("Nitrogen treatment contrasts",
+                   subtitle = "Wald tests (asymptotic chi-squared)")
+print(p_custom)
+```
+
+---
+
+## ASReml-R V4 integration
+
+In practice `waldTest()` is most commonly called via its S3 method
+`waldTest.asreml()`, which calls `predict()` internally. The workflow below
+requires an ASReml-R V4 licence and is shown for reference only.
+
+```{r asreml_workflow}
+#| eval: false
+library(asreml)
+
+# Fit a mixed model
+model <- asreml(
+  yield  ~ Treatment,
+  random = ~ Variety + Site + Site:Variety,
+  data   = trial_data
+)
+
+# --- Option A: S3 convenience method ---
+# predict() is called internally; df_error taken from model$nedf automatically
+res_asr <- waldTest(
+  model,
+  classify = "Treatment",
+  cc       = list(list(coef = c("Control", "LowN", "MidN", "HighN"),
+                       type = "con", comp = "pairwise")),
+  test     = "F",
+  adjust   = "fdr"
+)
+
+# --- Option B: explicit predict() then waldTest() ---
+pred_asr <- predict(model, classify = "Treatment:Site", vcov = TRUE)
+
+res_by <- waldTest(
+  pred_asr,
+  cc       = list(list(coef = c("Control", "LowN", "MidN", "HighN"),
+                       type = "con", comp = "pairwise")),
+  by       = "Site",
+  test     = "F",
+  df_error = model$nedf,
+  adjust   = "fdr"
+)
+
+# Forest plot — one facet per site
+plot_waldTest(res_by, facet = TRUE)
+```
+
+---
+
+## Summary
+
+| Task | Specification |
+|------|---------------|
+| All pairwise differences | `list(coef = levs, type = "con", comp = "pairwise")` |
+| Single manual contrast | `list(coef = levs, type = "con", comp = c(...))` |
+| Multiple contrasts | `list(coef = levs, type = "con", comp = matrix(...))` |
+| Joint zero test | `list(coef = levs, type = "zero", group = "label")` |
+| Both types | Combine in the same `cc` list |
+| By-group | Add `by = "ColumnName"` to `waldTest()` |
+| Multi-factor by | Add `by = c("Site", "Year")` |
+| F-test | Add `test = "F", df_error = model$nedf` |
+| Adjust p-values | Add `adjust = "fdr"` (or `"bonferroni"`, `"holm"`, `"BY"`) |
+| Forest plot | `plot_waldTest(res)` |
+| Export plot data | `plot_waldTest(res, return_data = TRUE)` |
+
+---
+
+## References
+
+Wald, A. (1943). Tests of statistical hypotheses concerning several parameters
+when the number of observations is large. *Transactions of the American
+Mathematical Society*, **54**(3), 426–482.
+
+Searle, S.R., Casella, G. & McCulloch, C.E. (1992). *Variance Components*.
+Wiley.
+
+Kenward, M.G. & Roger, J.H. (1997). Small sample inference for fixed effects
+from restricted maximum likelihood. *Biometrics*, **53**(3), 983–997.
+
+Benjamini, Y. & Hochberg, Y. (1995). Controlling the false discovery rate: a
+practical and powerful approach to multiple testing. *Journal of the Royal
+Statistical Society B*, **57**(1), 289–300.

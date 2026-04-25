@@ -27,8 +27,5 @@ Suggests:
     testthat (>= 3.1.2),
     devtools,
     covr,
-    xml2,
-    knitr,
-    rmarkdown
-VignetteBuilder: knitr
+    xml2
 Config/testthat/edition: 3

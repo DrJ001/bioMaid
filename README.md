@@ -13,7 +13,7 @@ with **ASReml-R V4** mixed models. Watch this space, there are a lot more functi
 
 | Vignette | Description |
 |----------|-------------|
-| [Wald Tests on Fixed-Effect Contrasts](vignettes/waldTest.md) | Mathematical framework and worked examples for `waldTest()` and `plot_waldTest()` |
+| [Wald Tests on Fixed-Effect Contrasts](https://DrJ001.github.io/biomAid/waldTest.html) | Mathematical framework and worked examples for `waldTest()` and `plot_waldTest()` |
 
 ---
 

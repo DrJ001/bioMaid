@@ -1,0 +1,29 @@
+project:
+  type: website
+  output-dir: ../docs
+
+website:
+  title: "biomAid"
+  navbar:
+    left:
+      - text: "Vignettes"
+        menu:
+          - text: "Wald Tests on Fixed-Effect Contrasts"
+            href: waldTest.html
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: false
+    smooth-scroll: true
+    embed-resources: false
+    code-fold: false
+    highlight-style: github
+    mainfont: "Source Serif 4, Georgia, serif"
+    monofont: "Fira Code, monospace"
+
+execute:
+  freeze: auto
