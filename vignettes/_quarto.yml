@@ -14,16 +14,15 @@ website:
 format:
   html:
     theme: litera
+    css: custom.css
     toc: true
     toc-depth: 3
     toc-location: left
     number-sections: false
     smooth-scroll: true
-    embed-resources: false
+    embed-resources: true
     code-fold: false
     highlight-style: github
-    mainfont: "Source Serif 4, Georgia, serif"
-    monofont: "Fira Code, monospace"
 
 execute:
   freeze: auto

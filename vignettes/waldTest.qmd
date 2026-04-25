@@ -10,11 +10,10 @@ format:
     toc-location: left
     number-sections: false
     smooth-scroll: true
-    embed-resources: false
+    embed-resources: true
     theme: litera
+    css: custom.css
     highlight-style: github
-    mainfont: "Source Serif 4, Georgia, serif"
-    monofont: "Fira Code, monospace"
     code-fold: false
     fig-width: 7
     fig-height: 4
