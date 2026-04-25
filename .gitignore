@@ -29,7 +29,6 @@ Thumbs.db
 # Scratch folder — exploratory scripts, never bundled into the package
 scratch/
 
-# Quarto rendered output — built by CI and deployed to gh-pages
-docs/
+# Quarto intermediate build artefacts (rendered HTML in docs/ IS committed)
 vignettes/.quarto/
 vignettes/*_files/

@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.353">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="biomAid package">
+<meta name="dcterms.date" content="2026-04-25">
+
+<title>biomAid - Wald Tests on Fixed-Effect Contrasts</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 20,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit"
+  }
+}</script>
+<style>html{ scroll-behavior: smooth; }</style>
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css">
+
+</head>
+
+<body class="floating nav-fixed">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">biomAid</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-vignettes" role="button" data-bs-toggle="dropdown" aria-expanded="false" rel="" target="">
+ <span class="menu-text">Vignettes</span>
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="nav-menu-vignettes">    
+        <li>
+    <a class="dropdown-item" href="./waldTest.html" rel="" target="">
+ <span class="dropdown-text">Wald Tests on Fixed-Effect Contrasts</span></a>
+  </li>  
+    </ul>
+  </li>
+</ul>
+            <div class="quarto-navbar-tools ms-auto">
+</div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal sidebar-navigation floating overflow-auto">
+    <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a></li>
+  <li><a href="#mathematical-framework" id="toc-mathematical-framework" class="nav-link" data-scroll-target="#mathematical-framework">Mathematical Framework</a>
+  <ul class="collapse">
+  <li><a href="#predicted-values-and-their-variance" id="toc-predicted-values-and-their-variance" class="nav-link" data-scroll-target="#predicted-values-and-their-variance">Predicted values and their variance</a></li>
+  <li><a href="#contrast-tests" id="toc-contrast-tests" class="nav-link" data-scroll-target="#contrast-tests">Contrast tests</a></li>
+  <li><a href="#joint-zero-tests" id="toc-joint-zero-tests" class="nav-link" data-scroll-target="#joint-zero-tests">Joint zero tests</a></li>
+  <li><a href="#p-value-adjustment" id="toc-p-value-adjustment" class="nav-link" data-scroll-target="#p-value-adjustment">P-value adjustment</a></li>
+  </ul></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup">Setup</a>
+  <ul class="collapse">
+  <li><a href="#simulated-data-four-nitrogen-treatments" id="toc-simulated-data-four-nitrogen-treatments" class="nav-link" data-scroll-target="#simulated-data-four-nitrogen-treatments">Simulated data — four nitrogen treatments</a></li>
+  </ul></li>
+  <li><a href="#example-1-pairwise-contrasts" id="toc-example-1-pairwise-contrasts" class="nav-link" data-scroll-target="#example-1-pairwise-contrasts">Example 1: Pairwise contrasts</a></li>
+  <li><a href="#example-2-manual-contrast-vector" id="toc-example-2-manual-contrast-vector" class="nav-link" data-scroll-target="#example-2-manual-contrast-vector">Example 2: Manual contrast vector</a></li>
+  <li><a href="#example-3-custom-contrast-matrix" id="toc-example-3-custom-contrast-matrix" class="nav-link" data-scroll-target="#example-3-custom-contrast-matrix">Example 3: Custom contrast matrix</a></li>
+  <li><a href="#example-4-joint-zero-test" id="toc-example-4-joint-zero-test" class="nav-link" data-scroll-target="#example-4-joint-zero-test">Example 4: Joint zero test</a></li>
+  <li><a href="#example-5-combining-contrast-and-zero-tests" id="toc-example-5-combining-contrast-and-zero-tests" class="nav-link" data-scroll-target="#example-5-combining-contrast-and-zero-tests">Example 5: Combining contrast and zero tests</a></li>
+  <li><a href="#example-6-by-group-testing" id="toc-example-6-by-group-testing" class="nav-link" data-scroll-target="#example-6-by-group-testing">Example 6: By-group testing</a>
+  <ul class="collapse">
+  <li><a href="#multi-factor-by" id="toc-multi-factor-by" class="nav-link" data-scroll-target="#multi-factor-by">Multi-factor <code>by</code></a></li>
+  </ul></li>
+  <li><a href="#example-7-f-tests" id="toc-example-7-f-tests" class="nav-link" data-scroll-target="#example-7-f-tests">Example 7: F-tests</a></li>
+  <li><a href="#example-8-p-value-adjustment" id="toc-example-8-p-value-adjustment" class="nav-link" data-scroll-target="#example-8-p-value-adjustment">Example 8: P-value adjustment</a></li>
+  <li><a href="#forest-plots-with-plot_waldtest" id="toc-forest-plots-with-plot_waldtest" class="nav-link" data-scroll-target="#forest-plots-with-plot_waldtest">Forest plots with <code>plot_waldTest()</code></a>
+  <ul class="collapse">
+  <li><a href="#basic-forest-plot" id="toc-basic-forest-plot" class="nav-link" data-scroll-target="#basic-forest-plot">Basic forest plot</a></li>
+  <li><a href="#by-group-with-faceting-facet-true" id="toc-by-group-with-faceting-facet-true" class="nav-link" data-scroll-target="#by-group-with-faceting-facet-true">By-group with faceting (<code>facet = TRUE</code>)</a></li>
+  <li><a href="#by-group-on-one-panel-facet-false" id="toc-by-group-on-one-panel-facet-false" class="nav-link" data-scroll-target="#by-group-on-one-panel-facet-false">By-group on one panel (<code>facet = FALSE</code>)</a></li>
+  <li><a href="#adjusting-the-ci-level-and-significance-threshold" id="toc-adjusting-the-ci-level-and-significance-threshold" class="nav-link" data-scroll-target="#adjusting-the-ci-level-and-significance-threshold">Adjusting the CI level and significance threshold</a></li>
+  <li><a href="#extracting-the-plot-data" id="toc-extracting-the-plot-data" class="nav-link" data-scroll-target="#extracting-the-plot-data">Extracting the plot data</a></li>
+  </ul></li>
+  <li><a href="#asreml-r-v4-integration" id="toc-asreml-r-v4-integration" class="nav-link" data-scroll-target="#asreml-r-v4-integration">ASReml-R V4 integration</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
+  </ul>
+</nav>
+</nav>
+<div id="quarto-sidebar-glass" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Wald Tests on Fixed-Effect Contrasts</h1>
+<p class="subtitle lead"><code>waldTest()</code> and <code>plot_waldTest()</code></p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>biomAid package </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">April 25, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+</header>
+
+<hr>
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p><code>waldTest()</code> performs <strong>Wald tests on linear contrasts of predicted values</strong> obtained from <code>predict()</code>. Because it works entirely from a prediction list (predicted values + prediction error variance–covariance matrix), it requires no access to model internals and works with any mixed-model software that exposes a <code>vcov</code>-style prediction object — including ASReml-R V4.</p>
+<p>Two complementary test types are available:</p>
+<table class="table">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 50%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Null hypothesis</th>
+<th>Use case</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>"con"</code> — contrast</td>
+<td><span class="math inline">H_0: \mathbf{c}^\top\hat{\boldsymbol{\tau}} = 0</span></td>
+<td>Pairwise, treatment vs control, custom comparisons</td>
+</tr>
+<tr class="even">
+<td><code>"zero"</code> — joint zero</td>
+<td><span class="math inline">H_0: \mathbf{Z}\hat{\boldsymbol{\tau}} = \mathbf{0}</span></td>
+<td>Are a set of effects simultaneously zero?</td>
+</tr>
+</tbody>
+</table>
+<p>The companion function <code>plot_waldTest()</code> produces a publication-ready forest plot directly from the result.</p>
+<hr>
+</section>
+<section id="mathematical-framework" class="level2">
+<h2 class="anchored" data-anchor-id="mathematical-framework">Mathematical Framework</h2>
+<section id="predicted-values-and-their-variance" class="level3">
+<h3 class="anchored" data-anchor-id="predicted-values-and-their-variance">Predicted values and their variance</h3>
+<p>Let <span class="math inline">\hat{\boldsymbol{\tau}} = (\hat{\tau}_1, \ldots, \hat{\tau}_n)^\top</span> be the vector of <span class="math inline">n</span> predicted treatment effects (BLUEs or BLUPs), obtained from a mixed model with prediction error variance–covariance matrix</p>
+<p><span class="math display">
+\operatorname{Var}(\hat{\boldsymbol{\tau}} - \boldsymbol{\tau})
+  = \mathbf{V}_{\hat{\boldsymbol{\tau}}}.
+</span></p>
+<p>In ASReml-R V4 this is returned by <code>predict(model, classify = ..., vcov = TRUE)$vcov</code>.</p>
+<hr>
+</section>
+<section id="contrast-tests" class="level3">
+<h3 class="anchored" data-anchor-id="contrast-tests">Contrast tests</h3>
+<p>A <strong>contrast</strong> is a scalar linear combination <span class="math inline">\hat{c} = \mathbf{c}^\top\hat{\boldsymbol{\tau}}</span> where <span class="math inline">\mathbf{c}</span> is a user-specified contrast vector. The null hypothesis is</p>
+<p><span class="math display">
+H_0: \mathbf{c}^\top\boldsymbol{\tau} = 0.
+</span></p>
+<p>The estimated contrast and its standard error are</p>
+<p><span class="math display">
+\hat{c} = \mathbf{c}^\top\hat{\boldsymbol{\tau}},
+\qquad
+\operatorname{SE}(\hat{c})
+  = \sqrt{\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}.
+</span></p>
+<p>The <strong>Wald statistic</strong> is</p>
+<p><span class="math display">
+W = \frac{\hat{c}^2}
+         {\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}
+  = \frac{\bigl(\mathbf{c}^\top\hat{\boldsymbol{\tau}}\bigr)^2}
+         {\mathbf{c}^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}}
+  \;\overset{H_0}{\sim}\; \chi^2_1.
+</span></p>
+<p>When an error degrees of freedom <span class="math inline">\nu</span> is available (e.g.&nbsp;from a mixed model), the <strong>F-statistic</strong> <span class="math inline">F = W</span> is referred to an <span class="math inline">F_{1,\nu}</span> distribution, providing better finite-sample calibration.</p>
+<section id="pairwise-contrasts" class="level4">
+<h4 class="anchored" data-anchor-id="pairwise-contrasts">Pairwise contrasts</h4>
+<p>For <span class="math inline">k</span> treatment levels the <span class="math inline">\binom{k}{2}</span> pairwise differences are a convenient special case. For levels <span class="math inline">i</span> and <span class="math inline">j</span>, the contrast vector <span class="math inline">\mathbf{c}_{ij}</span> has <span class="math inline">+1</span> in position <span class="math inline">i</span>, <span class="math inline">-1</span> in position <span class="math inline">j</span>, and zeros elsewhere, so</p>
+<p><span class="math display">
+\hat{c}_{ij} = \hat{\tau}_i - \hat{\tau}_j,
+\qquad
+\operatorname{Var}(\hat{c}_{ij})
+  = [\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{ii}
+  - 2[\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{ij}
+  + [\mathbf{V}_{\hat{\boldsymbol{\tau}}}]_{jj}.
+</span></p>
+<p>Setting <code>comp = "pairwise"</code> in <code>waldTest()</code> generates all <span class="math inline">\binom{k}{2}</span> contrasts automatically.</p>
+</section>
+<section id="custom-contrast-matrices" class="level4">
+<h4 class="anchored" data-anchor-id="custom-contrast-matrices">Custom contrast matrices</h4>
+<p>Multiple contrasts can be tested in a single call by supplying a contrast <strong>matrix</strong> <span class="math inline">\mathbf{C}</span> (rows = contrasts, columns = levels). Each row <span class="math inline">\mathbf{c}_r^\top</span> is tested independently:</p>
+<p><span class="math display">
+W_r
+  = \frac{\bigl(\mathbf{c}_r^\top\hat{\boldsymbol{\tau}}\bigr)^2}
+         {\mathbf{c}_r^\top \mathbf{V}_{\hat{\boldsymbol{\tau}}} \mathbf{c}_r},
+  \quad r = 1, \ldots, m.
+</span></p>
+<hr>
+</section>
+</section>
+<section id="joint-zero-tests" class="level3">
+<h3 class="anchored" data-anchor-id="joint-zero-tests">Joint zero tests</h3>
+<p>A <strong>joint zero test</strong> simultaneously tests whether a subset of <span class="math inline">q</span> effects are all zero. Define the selection matrix <span class="math inline">\mathbf{Z}</span> (<span class="math inline">q \times n</span>) with a single <span class="math inline">1</span> per row selecting the coefficients of interest. The null hypothesis is</p>
+<p><span class="math display">
+H_0: \mathbf{Z}\boldsymbol{\tau} = \mathbf{0}.
+</span></p>
+<p>The Wald statistic is</p>
+<p><span class="math display">
+W = \hat{\boldsymbol{\tau}}^\top \mathbf{Z}^\top
+    \bigl(\mathbf{Z}\,\mathbf{V}_{\hat{\boldsymbol{\tau}}}\,\mathbf{Z}^\top\bigr)^{-1}
+    \mathbf{Z}\hat{\boldsymbol{\tau}}
+    \;\overset{H_0}{\sim}\; \chi^2_q,
+</span></p>
+<p>or <span class="math inline">F = W / q \sim F_{q,\nu}</span> for the F-test form.</p>
+<hr>
+</section>
+<section id="p-value-adjustment" class="level3">
+<h3 class="anchored" data-anchor-id="p-value-adjustment">P-value adjustment</h3>
+<p>When many contrasts are tested the family-wise error rate (FWER) or false discovery rate (FDR) inflates. <code>waldTest()</code> passes all raw p-values within each group to <code>p.adjust()</code>. The key options are:</p>
+<table class="table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 29%">
+<col style="width: 47%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Method</th>
+<th>Controls</th>
+<th>Best used when</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>"none"</code></td>
+<td>—</td>
+<td>Exploratory or single contrast</td>
+</tr>
+<tr class="even">
+<td><code>"bonferroni"</code></td>
+<td>FWER (conservative)</td>
+<td>Few contrasts, strict control needed</td>
+</tr>
+<tr class="odd">
+<td><code>"holm"</code></td>
+<td>FWER (less conservative)</td>
+<td>Few to moderate contrasts</td>
+</tr>
+<tr class="even">
+<td><code>"fdr"</code> / <code>"BH"</code></td>
+<td>FDR</td>
+<td>Many contrasts, some true effects expected</td>
+</tr>
+<tr class="odd">
+<td><code>"BY"</code></td>
+<td>FDR (arbitrary dependence)</td>
+<td>Dependent test statistics</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+</section>
+<section id="setup" class="level2">
+<h2 class="anchored" data-anchor-id="setup">Setup</h2>
+<section id="simulated-data-four-nitrogen-treatments" class="level3">
+<h3 class="anchored" data-anchor-id="simulated-data-four-nitrogen-treatments">Simulated data — four nitrogen treatments</h3>
+<p>We simulate a prediction object for four nitrogen treatments with a known increasing yield response. This mirrors the structure returned by <code>predict(model, classify = "Treatment", vcov = TRUE)</code> from ASReml-R V4.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(42L)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>treatments <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Control"</span>, <span class="st">"LowN"</span>, <span class="st">"MidN"</span>, <span class="st">"HighN"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>n          <span class="ot">&lt;-</span> <span class="fu">length</span>(treatments)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>mu         <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">45</span>, <span class="dv">52</span>, <span class="dv">61</span>, <span class="dv">67</span>)   <span class="co"># known increasing trend</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Predicted values data frame</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>pv <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">Treatment       =</span> <span class="fu">factor</span>(treatments, <span class="at">levels =</span> treatments),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">predicted.value =</span> mu <span class="sc">+</span> stats<span class="sc">::</span><span class="fu">rnorm</span>(n, <span class="dv">0</span>, <span class="dv">2</span>),</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">std.error       =</span> stats<span class="sc">::</span><span class="fu">runif</span>(n, <span class="fl">1.5</span>, <span class="fl">3.5</span>),</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">status          =</span> <span class="fu">factor</span>(<span class="fu">rep</span>(<span class="st">"Estimable"</span>, n)),</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Prediction error variance–covariance matrix</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>A    <span class="ot">&lt;-</span> <span class="fu">matrix</span>(stats<span class="sc">::</span><span class="fu">rnorm</span>(n<span class="sc">^</span><span class="dv">2</span>, <span class="dv">0</span>, <span class="fl">0.4</span>), n, n)</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>vcov <span class="ot">&lt;-</span> <span class="fu">crossprod</span>(A) <span class="sc">+</span> <span class="fu">diag</span>(<span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">5</span>, <span class="dv">5</span>, <span class="dv">6</span>))</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>pred <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">pvals =</span> pv, <span class="at">vcov =</span> vcov)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The predicted values and their standard errors:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>pv[, <span class="fu">c</span>(<span class="st">"Treatment"</span>, <span class="st">"predicted.value"</span>, <span class="st">"std.error"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Treatment predicted.value std.error
+1   Control        47.74192  2.813985
+2      LowN        50.87060  2.910130
+3      MidN        61.72626  2.415484
+4     HighN        68.26573  2.938225</code></pre>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="example-1-pairwise-contrasts" class="level2">
+<h2 class="anchored" data-anchor-id="example-1-pairwise-contrasts">Example 1: Pairwise contrasts</h2>
+<p>The most common use case — test all <span class="math inline">\binom{4}{2} = 6</span> pairwise differences among the nitrogen treatments. Setting <code>comp = "pairwise"</code> generates the full contrast matrix automatically.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>res1 <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  pred,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc =</span> <span class="fu">list</span>(</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">coef =</span> treatments, <span class="at">type =</span> <span class="st">"con"</span>, <span class="at">comp =</span> <span class="st">"pairwise"</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>res1<span class="sc">$</span>Contrasts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Comparison   Estimate Std.Error Wald.Statistic df  P.Value
+1  Control vs LowN  -3.128687  3.432074       0.831019  1 0.361978
+2  Control vs MidN -13.984340  3.382759      17.089991  1 0.000036
+3 Control vs HighN -20.523808  3.762537      29.754616  1 0.000000
+4     LowN vs MidN -10.855653  3.444802       9.930779  1 0.001625
+5    LowN vs HighN -17.395122  3.733963      21.702757  1 0.000003
+6    MidN vs HighN  -6.539468  3.471193       3.549174  1 0.059575</code></pre>
+</div>
+</div>
+<p><code>Comparison</code> reads as <code>"A vs B"</code> where <code>A</code> carries the positive coefficient (i.e.&nbsp;<span class="math inline">\hat{\tau}_A - \hat{\tau}_B</span>). <code>Wald.Statistic</code> = <span class="math inline">\hat{c}^2 / \widehat{\operatorname{Var}}(\hat{c})</span>; <code>df = 1</code> for all single-contrast rows; <code>P.Value</code> is from <span class="math inline">\chi^2_1</span>.</p>
+<p>The <code>HighN vs Control</code> contrast should be the most significant, reflecting the largest mean difference in the simulated data.</p>
+<hr>
+</section>
+<section id="example-2-manual-contrast-vector" class="level2">
+<h2 class="anchored" data-anchor-id="example-2-manual-contrast-vector">Example 2: Manual contrast vector</h2>
+<p>A <strong>manual contrast</strong> lets you specify exactly which comparison to make and how to label it. Here we test HighN minus Control using <span class="math inline">\mathbf{c} = (-1,\; 0,\; 0,\; 1)^\top</span> — one element per level in <code>coef</code> order.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>res2 <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  pred,</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc =</span> <span class="fu">list</span>(</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">coef  =</span> treatments,</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">type  =</span> <span class="st">"con"</span>,</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">comp  =</span> <span class="fu">c</span>(<span class="sc">-</span><span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>),     <span class="co"># HighN - Control</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>      <span class="at">group =</span> <span class="fu">list</span>(<span class="at">left =</span> <span class="st">"HighN"</span>, <span class="at">right =</span> <span class="st">"Control"</span>)</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>res2<span class="sc">$</span>Contrasts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Comparison Estimate Std.Error Wald.Statistic df P.Value
+1 HighN vs Control 20.52381  3.762537       29.75462  1       0</code></pre>
+</div>
+</div>
+<p>The <code>group</code> argument overrides the auto-generated label so the output reads <code>"HighN vs Control"</code>.</p>
+<hr>
+</section>
+<section id="example-3-custom-contrast-matrix" class="level2">
+<h2 class="anchored" data-anchor-id="example-3-custom-contrast-matrix">Example 3: Custom contrast matrix</h2>
+<p>A contrast <strong>matrix</strong> <span class="math inline">\mathbf{C}</span> (rows = contrasts, columns = levels) tests multiple specific comparisons in one call. Here we fit three polynomial contrasts across the four equally-spaced nitrogen levels.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Orthogonal polynomial contrasts for 4 equally-spaced levels</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>C_poly <span class="ot">&lt;-</span> <span class="fu">matrix</span>(</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">c</span>(<span class="sc">-</span><span class="dv">3</span>, <span class="sc">-</span><span class="dv">1</span>,  <span class="dv">1</span>,  <span class="dv">3</span>,   <span class="co"># linear trend</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>     <span class="dv">1</span>, <span class="sc">-</span><span class="dv">1</span>, <span class="sc">-</span><span class="dv">1</span>,  <span class="dv">1</span>,   <span class="co"># quadratic trend</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>    <span class="sc">-</span><span class="dv">1</span>,  <span class="dv">3</span>, <span class="sc">-</span><span class="dv">3</span>,  <span class="dv">1</span>),  <span class="co"># cubic trend</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">nrow =</span> <span class="dv">3</span>, <span class="at">byrow =</span> <span class="cn">TRUE</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>res3 <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>  pred,</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc =</span> <span class="fu">list</span>(</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>      <span class="at">coef  =</span> treatments,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>      <span class="at">type  =</span> <span class="st">"con"</span>,</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>      <span class="at">comp  =</span> C_poly,</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>      <span class="at">group =</span> <span class="fu">list</span>(<span class="at">left  =</span> <span class="fu">c</span>(<span class="st">"Linear"</span>, <span class="st">"Quadratic"</span>, <span class="st">"Cubic"</span>),</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>                   <span class="at">right =</span> <span class="fu">c</span>(<span class="st">"trend"</span>,  <span class="st">"trend"</span>,     <span class="st">"trend"</span>))</span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>res3<span class="sc">$</span>Contrasts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>          Comparison   Estimate Std.Error Wald.Statistic df  P.Value
+1    Linear vs trend  72.427078 11.997854      36.441380  1 0.000000
+2 Quadratic vs trend   3.410782  4.815652       0.501646  1 0.478778
+3     Cubic vs trend -12.043151 10.783552       1.247259  1 0.264077</code></pre>
+</div>
+</div>
+<p>For a monotone nitrogen response we expect a strong <strong>linear trend</strong> and negligible quadratic or cubic components.</p>
+<hr>
+</section>
+<section id="example-4-joint-zero-test" class="level2">
+<h2 class="anchored" data-anchor-id="example-4-joint-zero-test">Example 4: Joint zero test</h2>
+<p>A joint zero test asks: <em>are these effects simultaneously equal to zero?</em> This uses <code>type = "zero"</code> and tests the <span class="math inline">q</span>-dimensional null <span class="math inline">H_0: \mathbf{Z}\boldsymbol{\tau} = \mathbf{0}</span>.</p>
+<p>Here we test whether the three non-Control treatment effects are jointly zero — i.e.&nbsp;does nitrogen application have any effect at all?</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>res4 <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  pred,</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc =</span> <span class="fu">list</span>(</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">coef  =</span> <span class="fu">c</span>(<span class="st">"LowN"</span>, <span class="st">"MidN"</span>, <span class="st">"HighN"</span>),</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">type  =</span> <span class="st">"zero"</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">group =</span> <span class="st">"Nitrogen joint zero"</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>res4<span class="sc">$</span>Zero</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 Test Wald.Statistic df P.Value
+1 Nitrogen joint zero       1405.649  3       0</code></pre>
+</div>
+</div>
+<p><code>df = 3</code> because three effects are tested simultaneously. The statistic follows <span class="math inline">\chi^2_3</span> under <span class="math inline">H_0</span>.</p>
+<hr>
+</section>
+<section id="example-5-combining-contrast-and-zero-tests" class="level2">
+<h2 class="anchored" data-anchor-id="example-5-combining-contrast-and-zero-tests">Example 5: Combining contrast and zero tests</h2>
+<p>Both test types can be combined in a single <code>cc</code> list. Results are returned in separate <code>$Contrasts</code> and <code>$Zero</code> slots.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>res5 <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  pred,</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc =</span> <span class="fu">list</span>(</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">coef =</span> treatments,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">type =</span> <span class="st">"con"</span>, <span class="at">comp =</span> <span class="st">"pairwise"</span>),</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">coef  =</span> <span class="fu">c</span>(<span class="st">"LowN"</span>, <span class="st">"MidN"</span>, <span class="st">"HighN"</span>),</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>         <span class="at">type  =</span> <span class="st">"zero"</span>,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>         <span class="at">group =</span> <span class="st">"Nitrogen joint zero"</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"--- Contrasts ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>--- Contrasts ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>res5<span class="sc">$</span>Contrasts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Comparison   Estimate Std.Error Wald.Statistic df  P.Value
+1  Control vs LowN  -3.128687  3.432074       0.831019  1 0.361978
+2  Control vs MidN -13.984340  3.382759      17.089991  1 0.000036
+3 Control vs HighN -20.523808  3.762537      29.754616  1 0.000000
+4     LowN vs MidN -10.855653  3.444802       9.930779  1 0.001625
+5    LowN vs HighN -17.395122  3.733963      21.702757  1 0.000003
+6    MidN vs HighN  -6.539468  3.471193       3.549174  1 0.059575</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">--- Zero test ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+--- Zero test ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>res5<span class="sc">$</span>Zero</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                 Test Wald.Statistic df P.Value
+1 Nitrogen joint zero       1405.649  3       0</code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="example-6-by-group-testing" class="level2">
+<h2 class="anchored" data-anchor-id="example-6-by-group-testing">Example 6: By-group testing</h2>
+<p>When predictions span multiple environments (e.g.&nbsp;a <code>Treatment:Site</code> classify), the <code>by</code> argument runs the same <code>cc</code> specification independently within each group. The grouping column is prepended to both output tables.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(123L)</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>sites <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Site1"</span>, <span class="st">"Site2"</span>, <span class="st">"Site3"</span>)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>make_site_pv <span class="ot">&lt;-</span> <span class="cf">function</span>(site, seed) {</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set.seed</span>(seed)</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">Treatment       =</span> <span class="fu">factor</span>(treatments, <span class="at">levels =</span> treatments),</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">Site            =</span> <span class="fu">factor</span>(site),</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">predicted.value =</span> mu <span class="sc">+</span> stats<span class="sc">::</span><span class="fu">rnorm</span>(n, <span class="dv">0</span>, <span class="dv">8</span>),</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">std.error       =</span> stats<span class="sc">::</span><span class="fu">runif</span>(n, <span class="fl">1.5</span>, <span class="fl">4.0</span>),</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">status          =</span> <span class="fu">factor</span>(<span class="fu">rep</span>(<span class="st">"Estimable"</span>, n)),</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">stringsAsFactors =</span> <span class="cn">FALSE</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>all_pv <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, <span class="fu">mapply</span>(make_site_pv, sites, <span class="fu">c</span>(1L, 2L, 3L),</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>                                <span class="at">SIMPLIFY =</span> <span class="cn">FALSE</span>))</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>n_tot  <span class="ot">&lt;-</span> <span class="fu">nrow</span>(all_pv)</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Block-diagonal vcov — sites are independent</span></span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>vcov3 <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="dv">0</span>, n_tot, n_tot)</span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(sites)) {</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>  idx <span class="ot">&lt;-</span> ((i <span class="sc">-</span> 1L) <span class="sc">*</span> n <span class="sc">+</span> 1L)<span class="sc">:</span>(i <span class="sc">*</span> n)</span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set.seed</span>(i <span class="sc">*</span> 10L)</span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>  Ai  <span class="ot">&lt;-</span> <span class="fu">matrix</span>(stats<span class="sc">::</span><span class="fu">rnorm</span>(n<span class="sc">^</span><span class="dv">2</span>, <span class="dv">0</span>, <span class="fl">0.4</span>), n, n)</span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>  vcov3[idx, idx] <span class="ot">&lt;-</span> <span class="fu">crossprod</span>(Ai) <span class="sc">+</span> <span class="fu">diag</span>(stats<span class="sc">::</span><span class="fu">runif</span>(n, <span class="dv">3</span>, <span class="dv">7</span>))</span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>pred3 <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">pvals =</span> all_pv, <span class="at">vcov =</span> vcov3)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>res6 <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  pred3,</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc =</span> <span class="fu">list</span>(</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">list</span>(<span class="at">coef =</span> treatments, <span class="at">type =</span> <span class="st">"con"</span>, <span class="at">comp =</span> <span class="st">"pairwise"</span>)</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">by =</span> <span class="st">"Site"</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>res6<span class="sc">$</span>Contrasts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    Site       Comparison   Estimate Std.Error Wald.Statistic df  P.Value
+1  Site1  Control vs LowN -13.480777  3.218163      17.547438  1 0.000028
+2  Site1  Control vs MidN -14.326602  3.174292      20.370079  1 0.000006
+3  Site1 Control vs HighN -39.773877  3.269625     147.978968  1 0.000000
+4  Site1     LowN vs MidN  -0.845825  3.605754       0.055026  1 0.814538
+5  Site1    LowN vs HighN -26.293100  3.651546      51.847773  1 0.000000
+6  Site1    MidN vs HighN -25.447275  3.365917      57.157842  1 0.000000
+7  Site2  Control vs LowN -15.654110  3.773584      17.208724  1 0.000033
+8  Site2  Control vs MidN -35.878079  3.542470     102.576057  1 0.000000
+9  Site2 Control vs HighN -20.132311  3.769687      28.521777  1 0.000000
+10 Site2     LowN vs MidN -20.223969  3.223612      39.359280  1 0.000000
+11 Site2    LowN vs HighN  -4.478201  3.011543       2.211205  1 0.137012
+12 Site2    MidN vs HighN  15.745768  3.299688      22.770998  1 0.000002
+13 Site3  Control vs LowN -12.355262  3.590364      11.842051  1 0.000579
+14 Site3  Control vs MidN -25.765773  3.295750      61.119206  1 0.000000
+15 Site3 Control vs HighN -20.478412  3.345789      37.462380  1 0.000000
+16 Site3     LowN vs MidN -13.410512  3.393924      15.613004  1 0.000078
+17 Site3    LowN vs HighN  -8.123151  3.563535       5.196213  1 0.022636
+18 Site3    MidN vs HighN   5.287361  3.341984       2.503047  1 0.113626</code></pre>
+</div>
+</div>
+<p>The <code>Site</code> column identifies which group each contrast belongs to. The <code>coef</code> labels always refer to <strong>within-group</strong> row positions.</p>
+<section id="multi-factor-by" class="level3">
+<h3 class="anchored" data-anchor-id="multi-factor-by">Multi-factor <code>by</code></h3>
+<p>When predictions cross two or more factors (e.g.&nbsp;<code>Treatment:Site:Year</code>), pass a character vector to <code>by</code>. The levels are pasted into a composite key and the output column is named accordingly:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Illustrative — would require a Treatment:Site:Year classify</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>res_sy <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>  pred_site_year,</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> treatments, <span class="at">type =</span> <span class="st">"con"</span>, <span class="at">comp =</span> <span class="st">"pairwise"</span>)),</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">by =</span> <span class="fu">c</span>(<span class="st">"Site"</span>, <span class="st">"Year"</span>)</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Output column named "Site:Year"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<hr>
+</section>
+</section>
+<section id="example-7-f-tests" class="level2">
+<h2 class="anchored" data-anchor-id="example-7-f-tests">Example 7: F-tests</h2>
+<p>When an error degrees of freedom <span class="math inline">\nu</span> is available (e.g.&nbsp;<code>model$nedf</code> from ASReml-R), replacing the asymptotic <span class="math inline">\chi^2</span> with an <span class="math inline">F_{1,\nu}</span> distribution gives better-calibrated p-values in small samples. Set <code>test = "F"</code> and supply <code>df_error</code>.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Simulate a realistic denominator df (e.g. from a field trial model)</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>df_error_sim <span class="ot">&lt;-</span> 54L</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>res7 <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  pred,</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc       =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> treatments, <span class="at">type =</span> <span class="st">"con"</span>, <span class="at">comp =</span> <span class="st">"pairwise"</span>)),</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">test     =</span> <span class="st">"F"</span>,</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">df_error =</span> df_error_sim</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>res7<span class="sc">$</span>Contrasts</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Comparison   Estimate Std.Error F.Statistic df  P.Value
+1  Control vs LowN  -3.128687  3.432074    0.831019  1 0.366030
+2  Control vs MidN -13.984340  3.382759   17.089991  1 0.000125
+3 Control vs HighN -20.523808  3.762537   29.754616  1 0.000001
+4     LowN vs MidN -10.855653  3.444802    9.930779  1 0.002651
+5    LowN vs HighN -17.395122  3.733963   21.702757  1 0.000021
+6    MidN vs HighN  -6.539468  3.471193    3.549174  1 0.064964</code></pre>
+</div>
+</div>
+<p>The column is now <code>F.Statistic</code> (= Wald statistic for single contrasts). P-values are from <span class="math inline">F_{1,54}</span> rather than <span class="math inline">\chi^2_1</span> — slightly more conservative in small samples.</p>
+<hr>
+</section>
+<section id="example-8-p-value-adjustment" class="level2">
+<h2 class="anchored" data-anchor-id="example-8-p-value-adjustment">Example 8: P-value adjustment</h2>
+<p>With <span class="math inline">\binom{4}{2} = 6</span> pairwise comparisons the chance of at least one false positive is inflated. The <code>adjust</code> argument applies <code>p.adjust()</code> across all contrasts within each group.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Bonferroni</span></span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>res_bon <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(pred,</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">cc     =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> treatments, <span class="at">type =</span> <span class="st">"con"</span>,</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">comp =</span> <span class="st">"pairwise"</span>)),</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>                    <span class="at">adjust =</span> <span class="st">"bonferroni"</span>)</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a><span class="co"># FDR (Benjamini–Hochberg)</span></span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>res_fdr <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(pred,</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>                    <span class="at">cc     =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> treatments, <span class="at">type =</span> <span class="st">"con"</span>,</span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">comp =</span> <span class="st">"pairwise"</span>)),</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>                    <span class="at">adjust =</span> <span class="st">"fdr"</span>)</span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"--- Bonferroni adjusted ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>--- Bonferroni adjusted ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>res_bon<span class="sc">$</span>Contrasts[, <span class="fu">c</span>(<span class="st">"Comparison"</span>, <span class="st">"P.Value"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Comparison  P.Value
+1  Control vs LowN 1.000000
+2  Control vs MidN 0.000214
+3 Control vs HighN 0.000000
+4     LowN vs MidN 0.009752
+5    LowN vs HighN 0.000019
+6    MidN vs HighN 0.357450</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">--- FDR (BH) adjusted ---</span><span class="sc">\n</span><span class="st">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+--- FDR (BH) adjusted ---</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>res_fdr<span class="sc">$</span>Contrasts[, <span class="fu">c</span>(<span class="st">"Comparison"</span>, <span class="st">"P.Value"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Comparison  P.Value
+1  Control vs LowN 0.361978
+2  Control vs MidN 0.000071
+3 Control vs HighN 0.000000
+4     LowN vs MidN 0.002438
+5    LowN vs HighN 0.000010
+6    MidN vs HighN 0.071490</code></pre>
+</div>
+</div>
+<p>Bonferroni multiplies each p-value by the number of tests (capped at 1); FDR is less conservative and generally preferred when many contrasts are tested and some true effects are expected.</p>
+<hr>
+</section>
+<section id="forest-plots-with-plot_waldtest" class="level2">
+<h2 class="anchored" data-anchor-id="forest-plots-with-plot_waldtest">Forest plots with <code>plot_waldTest()</code></h2>
+<p><code>plot_waldTest()</code> turns a <code>waldTest()</code> result directly into a forest plot. Each contrast is shown as a filled circle with horizontal confidence interval bars. Points are coloured by <span class="math inline">-\log_{10}(p)</span>: non-significant results appear in grey; significant results follow a warm gradient from gold through orange to dark red as evidence strengthens. The raw p-value is printed beside each row.</p>
+<section id="basic-forest-plot" class="level3">
+<h3 class="anchored" data-anchor-id="basic-forest-plot">Basic forest plot</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>p1 <span class="ot">&lt;-</span> <span class="fu">plot_waldTest</span>(res1)</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p1)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="waldTest_files/figure-html/forest_basic-1.png" class="img-fluid" width="1050"></p>
+</div>
+</div>
+<p>The vertical dashed line at <span class="math inline">x = 0</span> is the reference for no difference. The colour bar maps <span class="math inline">-\log_{10}(p)</span> — results in the warm-gradient zone are significant at <code>alpha = 0.05</code>.</p>
+</section>
+<section id="by-group-with-faceting-facet-true" class="level3">
+<h3 class="anchored" data-anchor-id="by-group-with-faceting-facet-true">By-group with faceting (<code>facet = TRUE</code>)</h3>
+<p>When <code>waldTest()</code> was called with <code>by</code>, <code>facet = TRUE</code> (the default) produces one panel per group with free y-scales, making it easy to compare effect sizes across environments.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>p_facet <span class="ot">&lt;-</span> <span class="fu">plot_waldTest</span>(res6, <span class="at">facet =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p_facet)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="waldTest_files/figure-html/forest_facet-1.png" class="img-fluid" width="1050"></p>
+</div>
+</div>
+</section>
+<section id="by-group-on-one-panel-facet-false" class="level3">
+<h3 class="anchored" data-anchor-id="by-group-on-one-panel-facet-false">By-group on one panel (<code>facet = FALSE</code>)</h3>
+<p><code>facet = FALSE</code> places all groups on a single panel with dotted horizontal separator lines between groups. Useful for compact side-by-side comparison when the number of contrasts per group is small.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>p_single <span class="ot">&lt;-</span> <span class="fu">plot_waldTest</span>(res6, <span class="at">facet =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p_single)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="waldTest_files/figure-html/forest_nofacet-1.png" class="img-fluid" width="1050"></p>
+</div>
+</div>
+</section>
+<section id="adjusting-the-ci-level-and-significance-threshold" class="level3">
+<h3 class="anchored" data-anchor-id="adjusting-the-ci-level-and-significance-threshold">Adjusting the CI level and significance threshold</h3>
+<p><code>ci_level</code> controls the width of the CI arms; <code>alpha</code> shifts the colour-scale break between grey (non-significant) and the warm gradient.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 99% CI arms; stricter significance threshold</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>p_99 <span class="ot">&lt;-</span> <span class="fu">plot_waldTest</span>(res1, <span class="at">ci_level =</span> <span class="fl">0.99</span>, <span class="at">alpha =</span> <span class="fl">0.01</span>)</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p_99)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="waldTest_files/figure-html/forest_ci99-1.png" class="img-fluid" width="1050"></p>
+</div>
+</div>
+</section>
+<section id="extracting-the-plot-data" class="level3">
+<h3 class="anchored" data-anchor-id="extracting-the-plot-data">Extracting the plot data</h3>
+<p><code>return_data = TRUE</code> returns the tidy data frame used internally to build the plot, giving full control for bespoke customisation.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">plot_waldTest</span>(res1, <span class="at">return_data =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>df[, <span class="fu">c</span>(<span class="st">"label"</span>, <span class="st">"Estimate"</span>, <span class="st">"CI_lower"</span>, <span class="st">"CI_upper"</span>, <span class="st">"P.Value"</span>,</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>       <span class="st">"neg_log10_p"</span>, <span class="st">"significant"</span>, <span class="st">"p_label"</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>             label   Estimate   CI_lower    CI_upper  P.Value neg_log10_p
+1  Control vs LowN  -3.128687  -9.855428   3.5980544 0.361978   0.4413178
+2  Control vs MidN -13.984340 -20.614426  -7.3542542 0.000036   4.4436975
+3 Control vs HighN -20.523808 -27.898245 -13.1493710 0.000000  15.6535598
+4     LowN vs MidN -10.855653 -17.607341  -4.1039651 0.001625   2.7891466
+5    LowN vs HighN -17.395122 -24.713555 -10.0766890 0.000003   5.5228787
+6    MidN vs HighN  -6.539468 -13.342881   0.2639453 0.059575   1.2249359
+  significant p_label
+1       FALSE p=0.362
+2        TRUE p&lt;0.001
+3        TRUE p&lt;0.001
+4        TRUE p=0.002
+5        TRUE p&lt;0.001
+6       FALSE p=0.060</code></pre>
+</div>
+</div>
+<p>The ggplot object can be extended with <code>+</code> in the usual way:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a>p_custom <span class="ot">&lt;-</span> <span class="fu">plot_waldTest</span>(res1) <span class="sc">+</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>  ggplot2<span class="sc">::</span><span class="fu">ggtitle</span>(<span class="st">"Nitrogen treatment contrasts"</span>,</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>                   <span class="at">subtitle =</span> <span class="st">"Wald tests (asymptotic chi-squared)"</span>)</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(p_custom)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="waldTest_files/figure-html/bespoke-1.png" class="img-fluid" width="1050"></p>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="asreml-r-v4-integration" class="level2">
+<h2 class="anchored" data-anchor-id="asreml-r-v4-integration">ASReml-R V4 integration</h2>
+<p>In practice <code>waldTest()</code> is most commonly called via its S3 method <code>waldTest.asreml()</code>, which calls <code>predict()</code> internally. The workflow below requires an ASReml-R V4 licence and is shown for reference only.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(asreml)</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Fit a mixed model</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">asreml</span>(</span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>  yield  <span class="sc">~</span> Treatment,</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">random =</span> <span class="sc">~</span> Variety <span class="sc">+</span> Site <span class="sc">+</span> Site<span class="sc">:</span>Variety,</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data   =</span> trial_data</span>
+<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Option A: S3 convenience method ---</span></span>
+<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a><span class="co"># predict() is called internally; df_error taken from model$nedf automatically</span></span>
+<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a>res_asr <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a>  model,</span>
+<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">classify =</span> <span class="st">"Treatment"</span>,</span>
+<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc       =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> <span class="fu">c</span>(<span class="st">"Control"</span>, <span class="st">"LowN"</span>, <span class="st">"MidN"</span>, <span class="st">"HighN"</span>),</span>
+<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>                       <span class="at">type =</span> <span class="st">"con"</span>, <span class="at">comp =</span> <span class="st">"pairwise"</span>)),</span>
+<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">test     =</span> <span class="st">"F"</span>,</span>
+<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">adjust   =</span> <span class="st">"fdr"</span></span>
+<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Option B: explicit predict() then waldTest() ---</span></span>
+<span id="cb41-22"><a href="#cb41-22" aria-hidden="true" tabindex="-1"></a>pred_asr <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, <span class="at">classify =</span> <span class="st">"Treatment:Site"</span>, <span class="at">vcov =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb41-23"><a href="#cb41-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a>res_by <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
+<span id="cb41-25"><a href="#cb41-25" aria-hidden="true" tabindex="-1"></a>  pred_asr,</span>
+<span id="cb41-26"><a href="#cb41-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc       =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> <span class="fu">c</span>(<span class="st">"Control"</span>, <span class="st">"LowN"</span>, <span class="st">"MidN"</span>, <span class="st">"HighN"</span>),</span>
+<span id="cb41-27"><a href="#cb41-27" aria-hidden="true" tabindex="-1"></a>                       <span class="at">type =</span> <span class="st">"con"</span>, <span class="at">comp =</span> <span class="st">"pairwise"</span>)),</span>
+<span id="cb41-28"><a href="#cb41-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">by       =</span> <span class="st">"Site"</span>,</span>
+<span id="cb41-29"><a href="#cb41-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">test     =</span> <span class="st">"F"</span>,</span>
+<span id="cb41-30"><a href="#cb41-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">df_error =</span> model<span class="sc">$</span>nedf,</span>
+<span id="cb41-31"><a href="#cb41-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">adjust   =</span> <span class="st">"fdr"</span></span>
+<span id="cb41-32"><a href="#cb41-32" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb41-33"><a href="#cb41-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-34"><a href="#cb41-34" aria-hidden="true" tabindex="-1"></a><span class="co"># Forest plot — one facet per site</span></span>
+<span id="cb41-35"><a href="#cb41-35" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_waldTest</span>(res_by, <span class="at">facet =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<hr>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<table class="table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 71%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Task</th>
+<th>Specification</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>All pairwise differences</td>
+<td><code>list(coef = levs, type = "con", comp = "pairwise")</code></td>
+</tr>
+<tr class="even">
+<td>Single manual contrast</td>
+<td><code>list(coef = levs, type = "con", comp = c(...))</code></td>
+</tr>
+<tr class="odd">
+<td>Multiple contrasts</td>
+<td><code>list(coef = levs, type = "con", comp = matrix(...))</code></td>
+</tr>
+<tr class="even">
+<td>Joint zero test</td>
+<td><code>list(coef = levs, type = "zero", group = "label")</code></td>
+</tr>
+<tr class="odd">
+<td>Both types</td>
+<td>Combine in the same <code>cc</code> list</td>
+</tr>
+<tr class="even">
+<td>By-group</td>
+<td>Add <code>by = "ColumnName"</code> to <code>waldTest()</code></td>
+</tr>
+<tr class="odd">
+<td>Multi-factor by</td>
+<td>Add <code>by = c("Site", "Year")</code></td>
+</tr>
+<tr class="even">
+<td>F-test</td>
+<td>Add <code>test = "F", df_error = model$nedf</code></td>
+</tr>
+<tr class="odd">
+<td>Adjust p-values</td>
+<td>Add <code>adjust = "fdr"</code> (or <code>"bonferroni"</code>, <code>"holm"</code>, <code>"BY"</code>)</td>
+</tr>
+<tr class="even">
+<td>Forest plot</td>
+<td><code>plot_waldTest(res)</code></td>
+</tr>
+<tr class="odd">
+<td>Export plot data</td>
+<td><code>plot_waldTest(res, return_data = TRUE)</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+<section id="references" class="level2">
+<h2 class="anchored" data-anchor-id="references">References</h2>
+<p>Wald, A. (1943). Tests of statistical hypotheses concerning several parameters when the number of observations is large. <em>Transactions of the American Mathematical Society</em>, <strong>54</strong>(3), 426–482.</p>
+<p>Searle, S.R., Casella, G. &amp; McCulloch, C.E. (1992). <em>Variance Components</em>. Wiley.</p>
+<p>Kenward, M.G. &amp; Roger, J.H. (1997). Small sample inference for fixed effects from restricted maximum likelihood. <em>Biometrics</em>, <strong>53</strong>(3), 983–997.</p>
+<p>Benjamini, Y. &amp; Hochberg, Y. (1995). Controlling the false discovery rate: a practical and powerful approach to multiple testing. <em>Journal of the Royal Statistical Society B</em>, <strong>57</strong>(1), 289–300.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+<script src="site_libs/quarto-html/zenscroll-min.js"></script>
+</body></html>
