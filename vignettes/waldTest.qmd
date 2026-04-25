@@ -11,7 +11,7 @@ format:
     number-sections: false
     smooth-scroll: true
     embed-resources: false
-    theme: cosmo
+    theme: litera
     highlight-style: github
     mainfont: "Source Serif 4, Georgia, serif"
     monofont: "Fira Code, monospace"
