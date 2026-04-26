@@ -41,7 +41,7 @@ into two biologically interpretable components:
 
 - **Efficiency** — a variety's genetic value under the baseline (typically
   low-input) treatment.
-- **Responsiveness (or Tolerance)** — a variety's capacity to genetically respond to the application of a treatemt.
+- **Responsiveness (or Tolerance)** — a variety's capacity to genetically respond to the application of a treatment.
 
 The decomposition is derived from the **G-matrix** (genetic
 variance–covariance matrix across Treatment × Site combinations) using the
@@ -168,7 +168,9 @@ out <- simTrialData(
 )
 dat       <- out$data
 levs      <- c("T0", "T1", "T2")
-dat$TSite <- interaction(dat$Treatment, dat$Site, sep = "-")
+dat$TSite  <- interaction(dat$Treatment, dat$Site, sep = "-")
+dat$Row    <- factor(dat$Row)
+dat$Column <- factor(dat$Column)
 ```
 
 We fit a **factor analytic model** with 2 factors for the
@@ -181,16 +183,18 @@ and capture the dominant axes of genotype × environment interaction.
 #| results: hide
 asreml.options(trace = FALSE)
 model <- asreml(
-  yield  ~ TSite,
-  random = ~ fa(TSite, 2):Variety,
-  data   = dat,
-  maxit  = 30L
+  yield    ~ TSite,
+  random   = ~ fa(TSite, 2):Variety + at(Site):Rep,
+  residual = ~ dsum(~ ar1(Row):ar1(Column) | Site),
+  data     = dat,
+  maxit    = 30L
 )
 model <- update(model)
 ```
 
 ```{r model_summary}
-summary(model)$varcomp
+vc <- summary(model)$varcomp
+vc[grepl("TSite", rownames(vc)), ]
 ```
 
 ### Running `randomRegress()`
@@ -254,8 +258,8 @@ both axes divide each panel into four quadrants:
 | Quadrant | Efficiency | Responsiveness | Interpretation |
 |----------|-----------|----------------|----------------|
 | Top-right | High | High | Broadly adapted: performs well and responds strongly |
-| Top-left | Low | High | Responsive but low-yielding under baseline |
-| Bottom-right | High | Low | Efficient but doesn't benefit from intensification |
+| Top-left | Low | High | Responsive but poor performance under baseline |
+| Bottom-right | High | Low | Efficient but does not respond well to treatment |
 | Bottom-left | Low | Low | Poor performance on both scales |
 
 ```{r plot_quadrant}
