@@ -1,0 +1,608 @@
+---
+title: "Multivariate Fixed-Effects Regression of Treatment BLUEs"
+subtitle: "`fixedRegress()` and `plot_fixedRegress()`"
+author: "biomAid package"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: false
+    smooth-scroll: true
+    embed-resources: true
+    theme: litera
+    css: custom.css
+    highlight-style: github
+    code-fold: false
+    fig-width: 9
+    fig-height: 5
+    fig-dpi: 150
+    html-math-method: katex
+execute:
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(biomAid)
+library(ggplot2)
+library(asreml)
+```
+
+---
+
+## Overview
+
+`fixedRegress()` is the **fixed-effects (BLUE) analogue** of `randomRegress()`.
+For each group (e.g. site, environment, year) it regresses the BLUEs of each
+*conditioned* treatment on the BLUEs of its *conditioning* set using ordinary
+least squares, returning a **response index** — the OLS residual — for every
+genotype.
+
+The response index separates two biologically distinct components of treatment
+response:
+
+- **Efficiency** — a genotype's unconditional BLUE under the baseline treatment
+  (genetic value irrespective of applied inputs).
+- **Response index** — the OLS residual from regressing the conditioned
+  treatment BLUE on the baseline, measuring the genotype's capacity to respond
+  *above and beyond* what its baseline performance would predict.
+
+| Feature | `fixedRegress()` | `randomRegress()` |
+|---------|-----------------|------------------|
+| Predicted values used | BLUEs (fixed effects) | BLUPs (random effects) |
+| Regression | OLS with intercept | G-matrix conditional (through origin) |
+| Response measure | OLS residual (response index) | Conditional BLUP (responsiveness) |
+| Requires G-matrix | No | Yes (FA model) |
+| Requires ASExtras4 | No | Yes |
+| Applicable model types | Any fixed-treatment model | FA or unstructured G models |
+
+`plot_fixedRegress()` visualises the result as a regression scatter plot or an
+efficiency–response index quadrant plot.
+
+---
+
+## Mathematical Framework
+
+### BLUEs and their structure
+
+Let $\hat{\tau}_{jgk}$ be the BLUE for treatment $j$, genotype $g$, and group
+$k$ (e.g. site). Within each group $k$ the $n_k$ genotypic BLUEs for treatment
+$j$ form a vector $\hat{\boldsymbol{\tau}}_{jk}$. Because BLUEs include the
+treatment fixed-effect mean, they are **not** zero-centred — the between-group
+level differences are part of the signal.
+
+---
+
+### OLS conditioning
+
+For treatment $j$ with conditioning set $A_j$ (a subset of other treatment
+labels), the OLS model within group $k$ is
+
+$$
+\hat{\boldsymbol{\tau}}_{jk}
+  = \mathbf{X}_{jk}\,\hat{\boldsymbol{\beta}}_{jk}
+  + \tilde{\boldsymbol{\tau}}_{jk},
+\qquad
+\mathbf{X}_{jk}
+  = \bigl[\mathbf{1},\; \hat{\boldsymbol{\tau}}_{A_j k}\bigr],
+$$
+
+where $\mathbf{X}_{jk}$ is the $n_k \times (|A_j| + 1)$ design matrix
+(intercept plus one column per conditioning treatment). The OLS estimate is
+
+$$
+\hat{\boldsymbol{\beta}}_{jk}
+  = \bigl(\mathbf{X}_{jk}^\top \mathbf{X}_{jk}\bigr)^{-1}
+    \mathbf{X}_{jk}^\top\,\hat{\boldsymbol{\tau}}_{jk}.
+$$
+
+The first element of $\hat{\boldsymbol{\beta}}_{jk}$ is the intercept; the
+remaining elements are the OLS slopes with respect to each conditioning
+treatment. Only the slopes are stored in `res$beta`.
+
+---
+
+### The response index
+
+The **response index** $\tilde{\boldsymbol{\tau}}_{jk}$ is the vector of OLS
+residuals:
+
+$$
+\tilde{\boldsymbol{\tau}}_{jk}
+  = \hat{\boldsymbol{\tau}}_{jk}
+  - \mathbf{X}_{jk}\,\hat{\boldsymbol{\beta}}_{jk}
+  = \bar{\mathbf{H}}_{jk}\,\hat{\boldsymbol{\tau}}_{jk},
+$$
+
+where $\bar{\mathbf{H}}_{jk} = \mathbf{I} - \mathbf{X}_{jk}
+(\mathbf{X}_{jk}^\top\mathbf{X}_{jk})^{-1}\mathbf{X}_{jk}^\top$
+is the hat-matrix annihilator. Its variance–covariance matrix is
+
+$$
+\operatorname{Var}(\tilde{\boldsymbol{\tau}}_{jk})
+  = \sigma_{jk}^2\,\bar{\mathbf{H}}_{jk},
+\qquad df = n_k - |A_j| - 1,
+$$
+
+where $\sigma_{jk}$ is the OLS residual standard deviation stored in
+`res$sigmat`.
+
+The response index is:
+
+- **zero-mean** within each group by construction (OLS residuals are
+  mean-zero)
+- **orthogonal** to the conditioning treatment BLUEs within each group
+- on a **genotype-deviation** scale — it measures how much each genotype
+  deviates from the group-average relationship between treatments
+
+---
+
+### Tukey HSD for the response index
+
+`fixedRegress()` also computes a **Tukey HSD** for pairwise genotype
+comparisons on the response-index scale within each group:
+
+$$
+\text{HSD}_{jk}
+  = \frac{\overline{\text{SED}}_{jk}}{\sqrt{2}}\,
+    q_{0.95;\,n_k,\,df_{jk}},
+$$
+
+where $\overline{\text{SED}}_{jk}$ is the mean standard error of a
+genotype-pair difference derived from $\operatorname{Var}(\tilde{\boldsymbol{\tau}}_{jk})$
+and $q_{0.95;\,n,\,df}$ is the upper 5% point of the Studentised range
+distribution.
+
+---
+
+### Conditioning schemes
+
+The same four schemes as `randomRegress()` are available:
+
+| Scheme | $A_j$ for treatment $j$ | OLS model | Best for |
+|--------|-------------------------|-----------|----------|
+| `"baseline"` (default) | $\{\text{levs}[1]\}$ only | Simple regression ($df = n-2$) | Comparing all treatments to one baseline |
+| `"sequential"` | $\{\text{levs}[1], \ldots, \text{levs}[j-1]\}$ | Multiple regression | Orthogonal response components (Gram–Schmidt) |
+| `"partial"` | All other treatments | Multiple regression | Partial regression residuals |
+| `"custom"` | User-specified | Simple or multiple | Bespoke experimental logic |
+
+Under `"sequential"` conditioning the residuals from treatment $j$ are
+uncorrelated with all preceding treatment BLUEs — a Gram–Schmidt
+orthogonalisation of the BLUE space.
+
+---
+
+## Setup
+
+### Simulated data and model
+
+> **Requires:** ASReml-R V4. The vignette is pre-rendered so no licence is
+> needed to read it; run the code chunks only if you have ASReml-R installed.
+
+We use `simTrialData()` to generate a balanced multi-environment trial with
+20 varieties, 4 sites, and 3 nitrogen treatments (T0 = control, T1 = low N,
+T2 = high N). Treatment effects are set to span a clear range so that the
+regression patterns are easy to interpret.
+
+```{r simulate}
+#| cache: true
+out <- simTrialData(
+  nvar          = 20L,
+  nsite         = 4L,
+  treatments    = c("T0", "T1", "T2"),
+  treat_effects = c(0, 80, 200),
+  nrep          = 3L,
+  seed          = 42L,
+  verbose       = FALSE
+)
+dat        <- out$data
+levs       <- c("T0", "T1", "T2")
+dat$Row    <- factor(dat$Row)
+dat$Column <- factor(dat$Column)
+```
+
+We fit a standard **fixed Treatment × Site model** with variety and
+site-within-replicate random effects and a spatial residual structure. This
+is a typical starting point for a multi-environment analysis where treatment
+effects are regarded as fixed.
+
+```{r fit_model}
+#| cache: true
+#| results: hide
+asreml.options(trace = FALSE)
+model <- asreml(
+  yield    ~ Treatment * Site,
+  random   = ~ Variety + at(Site):Rep,
+  residual = ~ dsum(~ ar1(Row):ar1(Column) | Site),
+  data     = dat,
+  maxit    = 30L
+)
+model <- update(model)
+```
+
+### Running `fixedRegress()`
+
+`fixedRegress()` calls `predict()` internally using the `term` argument as
+the `classify`. The `by` argument splits the analysis so that separate OLS
+regressions are performed within each site:
+
+```{r run_fr_baseline}
+#| cache: true
+res_base <- fixedRegress(
+  model,
+  term = "Treatment:Site:Variety",
+  by   = "Site",
+  levs = levs
+)
+```
+
+The return value is a named list:
+
+```{r show_structure}
+str(res_base, max.level = 1)
+```
+
+The first few rows of `blues` show the raw BLUEs plus the response indices
+(`resp.*`) and their per-genotype standard errors (`se.*`) and Tukey HSDs
+(`HSD.*`):
+
+```{r blues_head}
+head(res_base$blues)
+```
+
+---
+
+## Example 1: Baseline conditioning
+
+`type = "baseline"` (the default) regresses each non-first treatment on
+`levs[1]` (T0) alone — a simple OLS regression with one conditioning
+treatment per group. This is the most interpretable scheme: T0 BLUEs
+represent a genotype's baseline performance; the response index for T1 and T2
+represents how much each genotype over- or under-performs relative to what its
+T0 BLUE would predict.
+
+```{r baseline}
+res_base <- fixedRegress(
+  model,
+  term = "Treatment:Site:Variety",
+  by   = "Site",
+  levs = levs,
+  type = "baseline"
+)
+```
+
+The OLS slopes $\hat{\beta}$ for each conditioned treatment within each site
+are stored in `res$beta`:
+
+```{r beta_baseline}
+res_base$beta$T1
+res_base$beta$T2
+```
+
+A slope $\hat{\beta} > 1$ means the conditioned treatment varies *more* across
+genotypes than the baseline; $\hat{\beta} < 1$ means it varies *less*. The
+residual standard deviations $\hat{\sigma}_{jk}$ (one per conditioned treatment
+per group) are in `res$sigmat`:
+
+```{r sigmat}
+res_base$sigmat
+```
+
+---
+
+## Example 2: Sequential conditioning
+
+`type = "sequential"` performs a Gram–Schmidt orthogonalisation of the BLUE
+space. Treatment $j$ is regressed on all preceding treatments, so the response
+index for T2 captures the genetic variation in high-nitrogen response that is
+*not* already explained by baseline performance or low-nitrogen response.
+
+```{r sequential}
+res_seq <- fixedRegress(
+  model,
+  term = "Treatment:Site:Variety",
+  by   = "Site",
+  levs = levs,
+  type = "sequential"
+)
+
+# T2 is now conditioned on both T0 and T1
+res_seq$cond_list
+```
+
+The beta data frame for T2 now has two slope columns — one for T0 and one
+for T1:
+
+```{r beta_seq}
+res_seq$beta$T2
+```
+
+---
+
+## Example 3: Partial conditioning
+
+`type = "partial"` regresses each treatment on *all other* treatments
+simultaneously. The response index is the partial regression residual —
+the genetic variation in treatment $j$ that is independent of all other
+treatment BLUEs. This is the most conservative scheme: it removes the maximum
+amount of shared genetic variation before extracting the residual.
+
+```{r partial}
+res_part <- fixedRegress(
+  model,
+  term = "Treatment:Site:Variety",
+  by   = "Site",
+  levs = levs,
+  type = "partial"
+)
+
+# T0 is now conditioned on T1 and T2; T1 on T0 and T2; T2 on T0 and T1
+res_part$cond_list
+```
+
+---
+
+## Example 4: Custom conditioning
+
+`type = "custom"` gives full control over the conditioning structure via the
+`cond` argument. A treatment with `NULL` in `cond` is left unconditional
+(its BLUE is used as-is). This is useful when the experimental design
+implies a specific hierarchy — for example, treating T0 as the unconditional
+baseline and using a custom asymmetric conditioning for T1 and T2.
+
+```{r custom}
+res_cust <- fixedRegress(
+  model,
+  term = "Treatment:Site:Variety",
+  by   = "Site",
+  levs = levs,
+  type = "custom",
+  cond = list(T0 = NULL,          # unconditional
+              T1 = "T0",          # T1 | T0  (same as baseline)
+              T2 = c("T0", "T1")) # T2 | T0 + T1 (same as sequential)
+)
+
+res_cust$cond_list
+```
+
+This particular `cond` specification reproduces the sequential scheme for a
+three-treatment design.
+
+---
+
+## Regression plot — `type = "regress"`
+
+The regression plot shows the raw BLUEs of each conditioned treatment (y-axis)
+against the BLUEs of its conditioning treatment (x-axis). Each panel
+corresponds to one group × treatment pair. A **dotted OLS regression line** is
+drawn through the data with the slope $\hat{\beta}$ annotated in the top-left
+corner of each panel.
+
+Unlike the random-effects analogue, the OLS line **does not pass through the
+origin** because BLUEs retain the treatment fixed-effect mean. With
+`centre = TRUE` (the default), within-group means are subtracted from both axes
+so that the zero reference lines fall at the centre of each panel and the
+above/below-average split has a clear biological meaning.
+
+```{r plot_regress}
+#| fig-height: 6
+p_reg <- plot_fixedRegress(res_base, type = "regress")
+print(p_reg)
+```
+
+With `centre = FALSE` the raw BLUEs are displayed on their original scale.
+Reference lines are drawn at the within-group treatment means (rather than
+zero) to preserve the above/below-average interpretation:
+
+```{r plot_regress_raw}
+#| fig-height: 6
+p_reg_raw <- plot_fixedRegress(res_base, type = "regress", centre = FALSE)
+print(p_reg_raw)
+```
+
+---
+
+## Quadrant plot — `type = "quadrant"`
+
+The quadrant plot shows the two components of treatment response directly:
+the **x-axis** carries the unconditional T0 BLUE (efficiency) and the
+**y-axis** carries the response index (OLS residual). Dotted zero reference
+lines divide each panel into four quadrants.
+
+The response index y-axis is always zero-centred (OLS residuals are
+mean-zero by construction). The x-axis is centred by subtracting within-group
+means when `centre = TRUE` (the default), keeping the quadrant interpretation
+valid:
+
+| Quadrant | Efficiency | Response index | Interpretation |
+|----------|-----------|----------------|----------------|
+| Top-right | High | High | Broadly adapted: strong baseline and extra treatment response |
+| Top-left | Low | High | Responsive to treatment despite low baseline |
+| Bottom-right | High | Low | High baseline but limited extra response to inputs |
+| Bottom-left | Low | Low | Below average on both components |
+
+```{r plot_quadrant}
+#| fig-height: 6
+p_quad <- plot_fixedRegress(res_base, type = "quadrant")
+print(p_quad)
+```
+
+---
+
+## Genotype highlighting
+
+By default, `highlight = "default"` automatically selects and annotates
+**six genotypes** that are informative archetypes of the efficiency–response
+space. The algorithm is identical to the one used in `plot_randomRegress()`.
+
+### How the default algorithm works
+
+1. Compute the mean efficiency (x) and response index (y) for each genotype
+   **across all groups and treatment pairs** using the centred quadrant data
+   (regardless of the `centre` display setting).
+2. Separate genotypes into the **top-right** quadrant ($x > 0$, $y > 0$)
+   and the **bottom-left** quadrant ($x < 0$, $y < 0$).
+3. Within each quadrant, retain genotypes whose distance from the origin
+   exceeds the 50th percentile (relaxes to 33rd then 0th if fewer than
+   three candidates remain).
+4. Pick three archetypes by polar angle $\theta = \arctan(|y|/|x|)$:
+   - **Efficiency archetype** — smallest $\theta$ (near the x-axis)
+   - **Balanced archetype** — closest to $\theta = \pi/4$
+   - **Response archetype** — largest $\theta$ (near the y-axis)
+
+Orange labels = top-right archetypes; blue labels = bottom-left archetypes.
+The same six genotypes are annotated across all panels.
+
+```{r highlight_default}
+#| fig-height: 6
+p_hl <- plot_fixedRegress(res_base, type = "quadrant", highlight = "default")
+print(p_hl)
+```
+
+### User-specified highlights
+
+Pass a character vector of genotype names to annotate specific genotypes of
+interest (shown in green):
+
+```{r highlight_custom}
+#| fig-height: 6
+user_genos <- levels(factor(res_base$blues$Variety))[c(1L, 10L, 20L)]
+p_custom   <- plot_fixedRegress(res_base, type  = "quadrant",
+                                 highlight = user_genos)
+print(p_custom)
+```
+
+### No highlighting
+
+Set `highlight = NULL` to suppress annotation entirely:
+
+```{r highlight_none}
+#| fig-height: 6
+p_none <- plot_fixedRegress(res_base, type = "quadrant", highlight = NULL)
+print(p_none)
+```
+
+---
+
+## Filtering treatments — `treatments` argument
+
+For results with many conditioned treatments, `treatments` restricts which
+pairs appear in the plot. Here we show T2 only:
+
+```{r treatments_filter}
+#| fig-height: 4
+p_t2 <- plot_fixedRegress(res_base, type = "quadrant", treatments = "T2")
+print(p_t2)
+```
+
+---
+
+## Extracting plot data — `return_data = TRUE`
+
+Both plot types support `return_data = TRUE`, which returns the tidy data
+frame used to build the plot. Column names are standardised to `"Group"` and
+`"Genotype"` regardless of the original column names in `res$blues`:
+
+```{r return_data_quad}
+df_quad <- plot_fixedRegress(res_base, type = "quadrant", return_data = TRUE)
+head(df_quad)
+```
+
+```{r return_data_reg}
+df_reg <- plot_fixedRegress(res_base, type = "regress", return_data = TRUE)
+names(df_reg)
+```
+
+The returned data frame can be passed directly into any `ggplot2` workflow:
+
+```{r bespoke}
+#| fig-height: 4
+# Custom plot: T1 quadrant only, colour by site
+df_t1 <- plot_fixedRegress(res_base, type = "quadrant",
+                            treatments  = "T1",
+                            return_data = TRUE)
+
+ggplot(df_t1, aes(x = x, y = y, colour = Group)) +
+  geom_hline(yintercept = 0, linetype = "dotted", colour = "grey40") +
+  geom_vline(xintercept = 0, linetype = "dotted", colour = "grey40") +
+  geom_point(size = 1.8, alpha = 0.8) +
+  facet_wrap(~ Group, nrow = 2L) +
+  labs(
+    x     = "Efficiency (T0 BLUE, centred)",
+    y     = "Response index (T1 | T0)",
+    title = "Custom site-coloured quadrant plot"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+```
+
+The ggplot object returned by `plot_fixedRegress()` can also be extended
+directly with `+`:
+
+```{r extend_plot}
+#| fig-height: 6
+p_titled <- plot_fixedRegress(res_base, type = "quadrant") +
+  ggplot2::ggtitle(
+    "Genotype efficiency vs nitrogen response index",
+    subtitle = "Baseline OLS conditioning — 4 sites"
+  )
+print(p_titled)
+```
+
+---
+
+## Return value summary
+
+`fixedRegress()` returns a named list:
+
+| Element | Type | Description |
+|---------|------|-------------|
+| `blues` | Data frame | Raw BLUEs + response indices (`resp.*`) + standard errors (`se.*`) + Tukey HSD (`HSD.*`) per genotype × group |
+| `beta` | Named list | One data frame per conditioned treatment; each data frame has the grouping column plus one slope column per conditioning treatment |
+| `sigmat` | Matrix | Residual standard deviations $\hat{\sigma}_{jk}$, dimensions $n_\text{groups} \times n_\text{cond}$ |
+| `cond_list` | Named list | Resolved conditioning structure |
+| `type` | Character | Conditioning scheme used |
+
+---
+
+## Summary
+
+| Task | Argument / specification |
+|------|--------------------------|
+| Baseline conditioning | `type = "baseline"` (default) |
+| Orthogonal (Gram–Schmidt) | `type = "sequential"` |
+| Partial regression residuals | `type = "partial"` |
+| Bespoke conditioning | `type = "custom", cond = list(...)` |
+| Split by site / group | `by = "Site"` |
+| No grouping (one regression) | `by = NULL` (default) |
+| Regression scatter plot | `plot_fixedRegress(res, type = "regress")` |
+| Efficiency–response index plot | `plot_fixedRegress(res, type = "quadrant")` |
+| Default archetype highlights | `highlight = "default"` |
+| Named genotype highlights | `highlight = c("Gen01", "Gen15")` |
+| Suppress highlights | `highlight = NULL` |
+| Restrict treatments shown | `treatments = "T2"` |
+| Centred axes (default) | `centre = TRUE` |
+| Raw BLUE scale | `centre = FALSE` |
+| Export plot data | `return_data = TRUE` |
+
+---
+
+## References
+
+Finlay, K.W. & Wilkinson, G.N. (1963). The analysis of adaptation in a
+plant-breeding programme. *Australian Journal of Agricultural Research*,
+**14**(6), 742–754. <https://doi.org/10.1071/AR9630742>
+
+Eberhart, S.A. & Russell, W.A. (1966). Stability parameters for comparing
+varieties. *Crop Science*, **6**(1), 36–40.
+<https://doi.org/10.2135/cropsci1966.0011183X000600010011x>
+
+McDonald G, Bovill W, Taylor J, Wheeler R. (2015). Responses to phosphorus
+among wheat genotypes. *Crop and Pasture Science*, **66**(5), 430–444.
+<https://doi.org/10.1071/CP14191>
+
+Searle, S.R., Casella, G. & McCulloch, C.E. (1992). *Variance Components*.
+Wiley.
