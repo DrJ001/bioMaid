@@ -204,18 +204,19 @@ dat$Row    <- factor(dat$Row)
 dat$Column <- factor(dat$Column)
 ```
 
-We fit a standard **fixed Treatment × Site model** with variety and
-site-within-replicate random effects and a spatial residual structure. This
-is a typical starting point for a multi-environment analysis where treatment
-effects are regarded as fixed.
+We fit a **fixed Treatment × Site × Variety model** with site-within-replicate
+random effects and a spatial residual structure. Variety must be in the fixed
+effects so that `predict()` returns true BLUEs for every Treatment × Site ×
+Variety combination — the raw material for the OLS regressions in
+`fixedRegress()`.
 
 ```{r fit_model}
 #| cache: true
 #| results: hide
 asreml.options(trace = FALSE)
 model <- asreml(
-  yield    ~ Treatment * Site,
-  random   = ~ Variety + at(Site):Rep,
+  yield    ~ Treatment * Site * Variety,
+  random   = ~ at(Site):Rep,
   residual = ~ dsum(~ ar1(Row):ar1(Column) | Site),
   data     = dat,
   maxit    = 30L
