@@ -78,12 +78,16 @@ print.pc_interactive <- function(x, ...) {
 #' @noRd
 .pc_add_hover_js <- function(p_plotly, hover_data) {
 
-  # ---- Add layout.shapes for the band — one per panel --------------------
-  # Use yref = "y" / "y2" ... with data coordinates so each shape is
-  # confined to its own subplot.
-  # The continuous y-axis (y_pos) ranges from 0.5 to n_vars + 0.5.
+  # ---- APPEND band shapes to existing layout.shapes ----------------------
+  # ggplotly already puts shapes in layout.shapes (panel borders, strip
+  # boxes, etc.).  We must APPEND the band shapes — not replace — or all
+  # those theming shapes are lost.
+  existing <- p_plotly$x$layout$shapes
+  if (is.null(existing)) existing <- list()
+  n_existing <- length(existing)          # 0-based offset for our new shapes
+
   xax_names <- names(hover_data)
-  shapes <- lapply(seq_along(xax_names), function(i) {
+  band_shapes <- lapply(seq_along(xax_names), function(i) {
     xax   <- xax_names[i]
     yax   <- if (xax == "x") "y" else paste0("y", sub("^x", "", xax))
     panel <- hover_data[[xax]]
@@ -100,10 +104,19 @@ print.pc_interactive <- function(x, ...) {
       layer     = "below"
     )
   })
-  p_plotly$x$layout$shapes <- shapes
+  p_plotly$x$layout$shapes <- c(existing, band_shapes)
 
-  # ---- Step 3: inject hover JavaScript ------------------------------------
-  panels_json <- jsonlite::toJSON(hover_data, auto_unbox = TRUE)
+  # Build an explicit xaxis -> band shape index (0-based) map so the
+  # JavaScript never has to scan for the right shape by type — it knows
+  # exactly which indices are the bands we just appended.
+  axis_shape_map <- stats::setNames(
+    as.list(seq_len(length(xax_names)) + n_existing - 1L),
+    xax_names
+  )
+
+  # ---- Inject hover JavaScript -------------------------------------------
+  panels_json    <- jsonlite::toJSON(hover_data,      auto_unbox = TRUE)
+  axis_shape_json <- jsonlite::toJSON(axis_shape_map, auto_unbox = TRUE)
 
   js <- paste0("
 function(el, x) {
@@ -111,19 +124,16 @@ function(el, x) {
   // Per-panel data: criterion + original band bounds (embedded from R)
   var panelData = ", panels_json, ";
 
-  // Map xref -> shape index (0-based) — indices match the shapes we added
-  var axisShape = {};
-  (x.layout.shapes || []).forEach(function(shape, idx) {
-    if (shape.type === 'rect') axisShape[shape.xref || 'x'] = idx;
-  });
+  // Explicit band shape indices (0-based) per panel axis — embedded from R
+  // so the JS never accidentally selects a ggplotly theming shape.
+  var axisShape = ", axis_shape_json, ";
 
   // Map xaxis -> [traceIdx, ...] for scatter+marker traces.
-  // Exclude fill traces (bands, already removed) and reference diamonds.
+  // Exclude reference diamonds and line-only traces.
   var axisTraces = {};
   var origColours = {};
   x.data.forEach(function(trace, idx) {
     if (trace.type !== 'scatter') return;
-    if (trace.fill === 'toself') return;            // skip any residual bands
     var mode = trace.mode || '';
     if (mode.indexOf('markers') < 0) return;        // skip line-only traces
     var sym = trace.marker ? trace.marker.symbol : null;
