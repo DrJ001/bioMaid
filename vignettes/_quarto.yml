@@ -14,6 +14,8 @@ website:
             href: randomRegress.html
           - text: "Multivariate Fixed-Effects Regression"
             href: fixedRegress.html
+          - text: "Extracting and Padding Field Trial Layouts"
+            href: padTrial.html
 
 format:
   html:
