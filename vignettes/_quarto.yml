@@ -10,6 +10,8 @@ website:
         menu:
           - text: "Wald Tests on Fixed-Effect Contrasts"
             href: waldTest.html
+          - text: "Multivariate Random Regression"
+            href: randomRegress.html
 
 format:
   html:

@@ -14,6 +14,7 @@ with **ASReml-R V4** mixed models. Watch this space, there are a lot more functi
 | Vignette | Description |
 |----------|-------------|
 | [Wald Tests on Fixed-Effect Contrasts](https://DrJ001.github.io/biomAid/waldTest.html) | Mathematical framework and worked examples for `waldTest()` and `plot_waldTest()` |
+| [Multivariate Random Regression](https://DrJ001.github.io/biomAid/randomRegress.html) | Conditioning schemes, efficiency/responsiveness decomposition, and all plot types for `randomRegress()` and `plot_randomRegress()` |
 
 ---
 
