@@ -26,6 +26,42 @@
 # ============================================================
 
 
+# ---- pc_interactive wrapper class -----------------------------------------
+#
+# When interactive = TRUE, plot_compare() returns a pc_interactive object
+# rather than converting to plotly immediately.  This allows the user to
+# extend the plot with ggplot2's + operator BEFORE the plotly conversion:
+#
+#   plot_compare(res, interactive = TRUE) + ggtitle("My title")
+#
+# The conversion to plotly happens lazily when the object is printed.
+
+## Wrap a ggplot in the pc_interactive class.
+#' @noRd
+.pc_make_interactive <- function(p) {
+  structure(list(plot = p), class = "pc_interactive")
+}
+
+## Support ggplot2's + operator on pc_interactive objects.
+## Adds the layer to the internal ggplot, then re-wraps.
+#' @export
+`+.pc_interactive` <- function(e1, e2) {
+  e1$plot <- e1$plot + e2
+  e1
+}
+
+## Auto-convert to plotly on print.
+#' @export
+print.pc_interactive <- function(x, ...) {
+  if (!requireNamespace("plotly", quietly = TRUE))
+    stop("Package 'plotly' is required to display an interactive plot. ",
+         "Install with: install.packages('plotly')")
+  p_plotly <- plotly::ggplotly(x$plot, tooltip = "text")
+  print(p_plotly)
+  invisible(x)
+}
+
+
 # ---- Internal helpers ------------------------------------------------------
 
 ## Detect which column is the criterion (HSD / LSD / Bonferroni).
@@ -651,8 +687,11 @@
 #' @param ...         Additional arguments passed to the background
 #'   `geom_point()` call (e.g. `size`, `alpha`).
 #'
-#' @return A `ggplot` object, a `plotly` object (when `interactive = TRUE`),
-#'   or a `data.frame` (when `return_data = TRUE`).
+#' @return A `ggplot` object (when `interactive = FALSE` and
+#'   `return_data = FALSE`), a `pc_interactive` object (when
+#'   `interactive = TRUE` — auto-converts to plotly on `print()`; supports
+#'   `+` for ggplot2 layer extensions before conversion), or a `data.frame`
+#'   (when `return_data = TRUE`).
 #'
 #' @seealso [compare()], [ggplot2::ggplot()]
 #'
@@ -757,9 +796,11 @@ plot_compare <- function(res,
     heatmap = .pc_plot_heatmap(df, crit_col, n_groups, theme, ...)
   ))
 
-  # ---- Optionally convert to plotly ---------------------------------------
+  # ---- Optionally wrap for lazy plotly conversion -------------------------
+  # Return a pc_interactive wrapper so the user can still use + to add
+  # ggplot2 layers before the plotly conversion happens at print() time.
   if (interactive)
-    return(plotly::ggplotly(p, tooltip = "text"))
+    return(.pc_make_interactive(p))
 
   p
 }

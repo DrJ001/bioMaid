@@ -176,7 +176,7 @@ test_that("dotplot data has expected columns", {
   res <- make_compare_single()
   df  <- plot_compare(res, type = "dotplot", return_data = TRUE)
   expect_true(all(c("Group", "Variety", "pred", "crit", "rank",
-                    "top_pred", "sig") %in% names(df)))
+                    "ref_pred", "band_lo", "band_hi", "sig") %in% names(df)))
 })
 
 test_that("letters data has letter column", {
@@ -202,33 +202,33 @@ test_that("dotplot: rank 1 is the highest predicted value", {
   expect_equal(top$pred, max(df$pred))
 })
 
-test_that("dotplot: top_pred equals max predicted value in group", {
+test_that("dotplot: ref_pred equals max predicted value in group (default)", {
   res <- make_compare_single(n = 10L, seed = 6L)
   df  <- plot_compare(res, type = "dotplot", return_data = TRUE)
-  expect_equal(unique(df$top_pred), max(df$pred))
+  expect_equal(unique(df$ref_pred), max(df$pred))
 })
 
-test_that("dotplot: sig=FALSE for top-ranked variety", {
+test_that("dotplot: sig='ns' for top-ranked variety (default)", {
   res <- make_compare_single(n = 10L, seed = 7L)
   df  <- plot_compare(res, type = "dotplot", return_data = TRUE)
-  expect_false(df$sig[df$rank == 1L])
+  expect_equal(df$sig[df$rank == 1L], "ns")
 })
 
-test_that("dotplot: varieties below criterion are sig=TRUE", {
+test_that("dotplot: varieties below criterion are sig='sig' (default)", {
   # Make criterion small so bottom variety is always significant
   res       <- make_compare_single(n = 10L, seed = 8L)
   res$HSD   <- rep(0.01, 10L)   # tiny criterion
   df        <- plot_compare(res, type = "dotplot", return_data = TRUE)
   # All but rank-1 should be significant
   non_top <- df[df$rank > 1L, ]
-  expect_true(all(non_top$sig))
+  expect_true(all(non_top$sig == "sig"))
 })
 
-test_that("dotplot: with large criterion all varieties are sig=FALSE", {
+test_that("dotplot: with large criterion all varieties are sig='ns' (default)", {
   res       <- make_compare_single(n = 10L, seed = 9L)
   res$HSD   <- rep(1000, 10L)
   df        <- plot_compare(res, type = "dotplot", return_data = TRUE)
-  expect_true(all(!df$sig))
+  expect_true(all(df$sig == "ns"))
 })
 
 # ---------------------------------------------------------------------------
@@ -341,7 +341,121 @@ test_that("2-factor by: 4 groups present in heatmap data", {
 })
 
 # ---------------------------------------------------------------------------
-# 9. LSD and Bonferroni criterion columns
+# 9. reference argument
+# ---------------------------------------------------------------------------
+
+test_that("reference: valid variety name changes ref_pred to that variety's pred", {
+  res <- make_compare_single(n = 10L, seed = 30L)
+  ref_var  <- as.character(res$Variety[5L])
+  ref_pred <- res$predicted.value[5L]
+  df  <- plot_compare(res, type = "dotplot", reference = ref_var,
+                      return_data = TRUE)
+  expect_equal(unique(df$ref_pred), ref_pred)
+})
+
+test_that("reference: band is two-sided ([ref-crit, ref+crit])", {
+  res <- make_compare_single(n = 10L, seed = 31L)
+  ref_var <- as.character(res$Variety[5L])
+  df      <- plot_compare(res, type = "dotplot", reference = ref_var,
+                          return_data = TRUE)
+  crit    <- unique(df$crit)
+  expect_equal(unique(df$band_lo), unique(df$ref_pred) - crit)
+  expect_equal(unique(df$band_hi), unique(df$ref_pred) + crit)
+})
+
+test_that("reference: sig has three levels (better/ns/worse) when spread is wide", {
+  # Use a tiny criterion so varieties above AND below reference are significant
+  res        <- make_compare_single(n = 20L, seed = 32L)
+  res$HSD    <- rep(0.01, 20L)   # tiny criterion
+  ref_var    <- as.character(res$Variety[10L])   # middle variety
+  df         <- plot_compare(res, type = "dotplot", reference = ref_var,
+                             return_data = TRUE)
+  sig_vals   <- unique(df$sig)
+  expect_true("better" %in% sig_vals)
+  expect_true("worse"  %in% sig_vals)
+})
+
+test_that("reference: reference variety itself gets sig='ns'", {
+  res     <- make_compare_single(n = 10L, seed = 33L)
+  ref_var <- as.character(res$Variety[5L])
+  df      <- plot_compare(res, type = "dotplot", reference = ref_var,
+                          return_data = TRUE)
+  expect_equal(df$sig[df$Variety == ref_var], "ns")
+})
+
+test_that("reference: unknown variety name warns and falls back to top-ranked", {
+  res <- make_compare_single(n = 10L, seed = 34L)
+  expect_warning(
+    df <- plot_compare(res, type = "dotplot", reference = "BadVar",
+                       return_data = TRUE),
+    "not found in group"
+  )
+  # After fallback: ref_pred should equal max pred
+  expect_equal(unique(df$ref_pred), max(df$pred))
+})
+
+test_that("reference: ignored with warning for type='letters'", {
+  res <- make_compare_single(n = 8L, seed = 35L)
+  expect_warning(
+    p <- plot_compare(res, type = "letters", reference = "G01"),
+    "only used for type"
+  )
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("reference: ignored with warning for type='heatmap'", {
+  res <- make_compare_single(n = 6L, seed = 36L)
+  expect_warning(
+    p <- plot_compare(res, type = "heatmap", reference = "G01"),
+    "only used for type"
+  )
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("reference: non-character stops", {
+  res <- make_compare_single()
+  expect_error(plot_compare(res, reference = 123L), "'reference' must be")
+})
+
+# ---------------------------------------------------------------------------
+# 10. interactive argument
+# ---------------------------------------------------------------------------
+
+test_that("interactive=FALSE returns a ggplot (plotly not needed)", {
+  res <- make_compare_single()
+  p   <- plot_compare(res, interactive = FALSE)
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("interactive=TRUE returns a pc_interactive object", {
+  res <- make_compare_single()
+  p   <- plot_compare(res, interactive = TRUE)
+  expect_s3_class(p, "pc_interactive")
+})
+
+test_that("pc_interactive supports + to add ggplot2 layers", {
+  res <- make_compare_single()
+  p   <- plot_compare(res, interactive = TRUE) +
+           ggplot2::ggtitle("Interactive title")
+  expect_s3_class(p, "pc_interactive")
+  expect_equal(p$plot$labels$title, "Interactive title")
+})
+
+test_that("interactive=TRUE errors if plotly not available", {
+  # Skip if plotly is installed — we can only test the error path when absent
+  skip_if(requireNamespace("plotly", quietly = TRUE),
+          "plotly is installed; cannot test absence error")
+  res <- make_compare_single()
+  expect_error(plot_compare(res, interactive = TRUE), "plotly.*required")
+})
+
+test_that("interactive: non-logical stops", {
+  res <- make_compare_single()
+  expect_error(plot_compare(res, interactive = "yes"), "single logical")
+})
+
+# ---------------------------------------------------------------------------
+# 11. LSD and Bonferroni criterion columns
 # ---------------------------------------------------------------------------
 
 test_that("plot_compare works with LSD criterion column", {

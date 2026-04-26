@@ -7,6 +7,8 @@
 plot_compare(
   res,
   type = c("dotplot", "letters", "heatmap"),
+  reference = NULL,
+  interactive = FALSE,
   theme = ggplot2::theme_bw(),
   return_data = FALSE,
   ...
@@ -18,6 +20,21 @@ plot_compare(
 \item{type}{Character string selecting the plot type. One of
 \code{"dotplot"} (default), \code{"letters"}, or \code{"heatmap"}.}
 
+\item{reference}{Character string or \code{NULL}. Applies to \code{type = "dotplot"} only. When \code{NULL} (default), the criterion band is anchored
+to the top-ranked variety in each group (one-sided band; points outside
+the band are red). When set to a variety name, the band is centred on
+that variety (\verb{[ref \eqn{-} crit,\\; ref + crit]}), the reference variety
+is shown as a diamond, and points are coloured green (significantly
+better), blue (not significant), or red (significantly worse). If the
+reference variety is not found in a particular group a warning is issued
+and that group falls back to top-ranked behaviour. Ignored with a warning
+for \code{type = "letters"} or \code{"heatmap"}.}
+
+\item{interactive}{Logical. If \code{TRUE}, converts the finished ggplot to an
+interactive \code{\link[plotly:ggplotly]{plotly::ggplotly()}} object with hover tooltips showing the
+variety name, predicted value, group, and significance status. Requires
+the \pkg{plotly} package. Default \code{FALSE}.}
+
 \item{theme}{A complete ggplot2 theme object.
 Default \code{\link[ggplot2:ggtheme]{ggplot2::theme_bw()}}.}
 
@@ -28,7 +45,10 @@ build the plot rather than the plot itself. Default \code{FALSE}.}
 \code{geom_point()} call (e.g. \code{size}, \code{alpha}).}
 }
 \value{
-A \code{ggplot} object (when \code{return_data = FALSE}) or a \code{data.frame}
+A \code{ggplot} object (when \code{interactive = FALSE} and
+\code{return_data = FALSE}), a \code{pc_interactive} object (when
+\code{interactive = TRUE} — auto-converts to plotly on \code{print()}; supports
+\code{+} for ggplot2 layer extensions before conversion), or a \code{data.frame}
 (when \code{return_data = TRUE}).
 }
 \description{
@@ -71,14 +91,20 @@ res <- compare(model,
                by   = "Site",
                type = "HSD")
 
-# Sorted dot plot with criterion band
+# Sorted dot plot with criterion band anchored to best variety
 plot_compare(res)
+
+# Anchor band to a specific check variety
+plot_compare(res, reference = "Scout")
+
+# Interactive plotly version with hover tooltips
+plot_compare(res, interactive = TRUE)
 
 # Compact letter display
 plot_compare(res, type = "letters")
 
-# Pairwise significance heatmap
-plot_compare(res, type = "heatmap")
+# Interactive heatmap
+plot_compare(res, type = "heatmap", interactive = TRUE)
 
 # Retrieve the tidy data frame
 df <- plot_compare(res, return_data = TRUE)
