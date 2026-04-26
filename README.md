@@ -14,8 +14,9 @@ with **ASReml-R V4** mixed models. Watch this space, there are a lot more functi
 | Vignette | Description |
 |----------|-------------|
 | [Wald Tests on Fixed-Effect Contrasts](https://DrJ001.github.io/biomAid/waldTest.html) | Mathematical framework and worked examples for `waldTest()` and `plot_waldTest()` |
-| [Multivariate Random Regression](https://DrJ001.github.io/biomAid/randomRegress.html) | Conditioning schemes, efficiency/responsiveness decomposition, and all plot types for `randomRegress()` and `plot_randomRegress()` |
-| [Multivariate Fixed-Effects Regression](https://DrJ001.github.io/biomAid/fixedRegress.html) | OLS conditioning schemes, efficiency/response index decomposition, and plot types for `fixedRegress()` and `plot_fixedRegress()` |
+| [Multi-treatment Random Regression](https://DrJ001.github.io/biomAid/randomRegress.html) | Conditioning schemes, efficiency/responsiveness decomposition, and all plot types for `randomRegress()` and `plot_randomRegress()` |
+| [Multi-treatment Fixed-Effects Regression](https://DrJ001.github.io/biomAid/fixedRegress.html) | OLS conditioning schemes, efficiency/response index decomposition, and plot types for `fixedRegress()` and `plot_fixedRegress()` |
+| [Extracting and Padding Field Trial Layouts](https://DrJ001.github.io/biomAid/padTrial.html) | Step-by-step guide to guard-row removal, missing-plot padding, and Before/After visualisation with `padTrial()` and `plot_padTrial()` |
 
 ---
 
