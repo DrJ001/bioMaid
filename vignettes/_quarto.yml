@@ -1,0 +1,30 @@
+project:
+  type: website
+  output-dir: ../docs
+
+website:
+  title: "biomAid"
+  navbar:
+    left:
+      - text: "Vignettes"
+        menu:
+          - text: "Wald Tests on Fixed-Effect Contrasts"
+            href: waldTest.html
+          - text: "Multivariate Random Regression"
+            href: randomRegress.html
+
+format:
+  html:
+    theme: litera
+    css: custom.css
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: false
+    smooth-scroll: true
+    embed-resources: true
+    code-fold: false
+    highlight-style: github
+
+execute:
+  freeze: auto
