@@ -28,6 +28,8 @@ execute:
 #| include: false
 library(biomAid)
 library(ggplot2)
+library(asreml)
+library(ASExtras4)
 ```
 
 ---
@@ -38,11 +40,8 @@ library(ggplot2)
 into two biologically interpretable components:
 
 - **Efficiency** — a variety's genetic value under the baseline (typically
-  low-input) treatment, reflecting its ability to perform well without
-  additional inputs.
-- **Responsiveness** — a variety's capacity to respond **beyond** what its
-  baseline genetic value predicts, reflecting the additional gain from
-  intensification.
+  low-input) treatment.
+- **Responsiveness (or Tolerance)** — a variety's capacity to genetically respond to the application of a treatemt.
 
 The decomposition is derived from the **G-matrix** (genetic
 variance–covariance matrix across Treatment × Site combinations) using the
@@ -69,7 +68,7 @@ $$
 
 with $k \times k$ blocks $\mathbf{G}_{jl}$ giving the genetic covariance
 between treatments $j$ and $l$ averaged across sites. In ASReml-R V4 this
-is the variance parameter matrix for the Treatment-Site:Variety random term.
+is the genetic variance/covariance matrix for the Treatment-Site:Variety random term.
 
 ---
 
@@ -146,103 +145,73 @@ The four built-in schemes differ only in how $A_j$ is chosen:
 
 ## Setup
 
-### Simulated data
+### Simulated data and model
 
-We use `simTrialData()` to generate a realistic multi-environment trial with
-30 varieties, 6 sites, and 3 nitrogen treatments (T0 = control, T1 = low N,
-T2 = high N). From the raw data we construct a mock `randomRegress()` result
-object directly from within-site variety means — the same approach used in
-practice when ASReml BLUPs are replaced by de-regressed or adjusted means.
+> **Requires:** ASReml-R V4 and ASExtras4. The vignette is pre-rendered so
+> no licence is needed to read it; run the code chunks only if you have
+> both packages installed.
+
+We use `simTrialData()` to generate a balanced multi-environment trial with
+20 varieties, 4 sites, and 3 nitrogen treatments (T0 = control, T1 = low N,
+T2 = high N). A composite `TSite` factor (e.g. `"T0-Env1"`) is created
+to serve as the Treatment × Site classification for the ASReml model.
 
 ```{r simulate}
-set.seed(99L)
+#| cache: true
 out <- simTrialData(
-  nvar       = 30L,
-  nsite      = 6L,
+  nvar       = 20L,
+  nsite      = 4L,
   treatments = c("T0", "T1", "T2"),
   nrep       = 3L,
-  seed       = 99L,
+  seed       = 42L,
   verbose    = FALSE
 )
-dat   <- out$data
-sites <- levels(dat$Site)
-levs  <- c("T0", "T1", "T2")
-ns    <- length(sites)
-nvar  <- 30L
+dat       <- out$data
+levs      <- c("T0", "T1", "T2")
+dat$TSite <- interaction(dat$Treatment, dat$Site, sep = "-")
 ```
 
-```{r build_res}
-#| code-fold: true
-#| code-summary: "Build mock randomRegress() result (click to expand)"
+We fit a **factor analytic model** with 2 factors for the
+Treatment × Site genetic covariance structure. FA models are the standard
+choice for multi-environment trials: they are parsimonious, converge well,
+and capture the dominant axes of genotype × environment interaction.
 
-# Within-site, within-treatment variety means (stand-ins for BLUPs)
-blup_list <- lapply(sites, function(s) {
-  sub <- dat[dat$Site == s, ]
-  u0 <- tapply(sub$yield[sub$Treatment == "T0"],
-               sub$Variety[sub$Treatment == "T0"], mean)
-  u1 <- tapply(sub$yield[sub$Treatment == "T1"],
-               sub$Variety[sub$Treatment == "T1"], mean)
-  u2 <- tapply(sub$yield[sub$Treatment == "T2"],
-               sub$Variety[sub$Treatment == "T2"], mean)
-  # Centre within site (BLUPs are zero-mean)
-  u0c <- u0 - mean(u0)
-  u1c <- u1 - mean(u1)
-  u2c <- u2 - mean(u2)
-  # Baseline regression coefficients
-  b1 <- cov(u0c, u1c) / var(u0c)
-  b2 <- cov(u0c, u2c) / var(u0c)
-  data.frame(
-    Site    = s,
-    Variety = names(u0c),
-    T0      = as.numeric(u0c),
-    T1      = as.numeric(u1c),
-    T2      = as.numeric(u2c),
-    resp.T1 = as.numeric(u1c - b1 * u0c),
-    resp.T2 = as.numeric(u2c - b2 * u0c),
-    HSD.T1  = NA_real_,
-    HSD.T2  = NA_real_,
-    stringsAsFactors = FALSE
-  )
-})
-blups <- do.call(rbind, blup_list)
+```{r fit_model}
+#| cache: true
+#| results: hide
+asreml.options(trace = FALSE)
+model <- asreml(
+  yield  ~ TSite,
+  random = ~ fa(TSite, 2):Variety,
+  data   = dat,
+  maxit  = 30L
+)
+model <- update(model)
+```
 
-# Site-specific beta matrices
-beta_T1 <- matrix(NA_real_, ns, 1L, dimnames = list(sites, "T0"))
-beta_T2 <- matrix(NA_real_, ns, 1L, dimnames = list(sites, "T0"))
-for (i in seq_along(sites)) {
-  s <- sites[i]
-  u0 <- blups$T0[blups$Site == s]
-  u1 <- blups$T1[blups$Site == s]
-  u2 <- blups$T2[blups$Site == s]
-  beta_T1[i, "T0"] <- cov(u0, u1) / var(u0)
-  beta_T2[i, "T0"] <- cov(u0, u2) / var(u0)
-}
+```{r model_summary}
+summary(model)$varcomp
+```
 
-# G-matrix from variety means across all treatment x site combinations
-nms <- paste0(rep(levs, each = ns), "-", rep(sites, length(levs)))
-mat <- matrix(NA_real_, nrow(blups), length(nms),
-              dimnames = list(NULL, nms))
-for (nm in nms) {
-  parts     <- strsplit(nm, "-")[[1L]]
-  mat[, nm] <- blups[[parts[1L]]][blups$Site == parts[2L]]
-}
-Gmat <- cov(mat, use = "complete.obs")
+### Running `randomRegress()`
 
-# Assemble mock res object
-res <- list(
-  blups     = blups,
-  beta      = list(T1 = beta_T1, T2 = beta_T2),
-  Gmat      = Gmat,
-  TGmat     = Gmat,
-  sigmat    = matrix(runif(ns * 2L, 100, 400), ns, 2L,
-                     dimnames = list(sites, c("T1", "T2"))),
-  tmat      = diag(length(nms)),
-  cond_list = list(T0 = NULL, T1 = "T0", T2 = "T0"),
-  type      = "baseline"
+With the fitted model, `randomRegress()` extracts the G-matrix from the
+FA variance parameters and computes BLUPs, regression coefficients, and
+responsiveness components using baseline conditioning (T0 as efficiency,
+T1 and T2 as responsiveness):
+
+```{r run_rr}
+#| cache: true
+res <- randomRegress(
+  model,
+  Env  = "TSite:Variety",
+  levs = levs,
+  type = "baseline",
+  sep  = "-"
 )
 ```
 
-The result object has the structure returned by `randomRegress()`:
+The return value:
 
 ```{r show_structure}
 str(res, max.level = 1)
@@ -264,14 +233,14 @@ than the baseline; $\hat{\beta} < 1$ means it varies less.
 
 ```{r plot_regress}
 #| fig-height: 7
-p_reg <- plot_randomRegress(res, type = "regress", centre = TRUE)
+p_reg <- plot_randomRegress(res, type = "regress")
 print(p_reg)
 ```
 
-The `centre = TRUE` option adds back the within-site mean, placing BLUPs on
-an approximate absolute yield scale. For true ASReml BLUPs (which are
-already zero-mean by construction) `centre = FALSE` (the default) is
-appropriate.
+ASReml BLUPs are already zero-mean within each site by construction, so
+`centre = FALSE` (the default) is appropriate. Use `centre = TRUE` only
+if BLUPs have been computed from adjusted means and retain a site-level
+offset.
 
 ---
 
