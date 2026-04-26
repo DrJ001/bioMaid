@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="biomAid package">
-<meta name="dcterms.date" content="2026-04-25">
+<meta name="dcterms.date" content="2026-04-26">
 
 <title>biomAid - Wald Tests on Fixed-Effect Contrasts</title>
 <style>
@@ -4690,6 +4690,10 @@ font-weight: 400;
     <a class="dropdown-item" href="./waldTest.html" rel target>
  <span class="dropdown-text">Wald Tests on Fixed-Effect Contrasts</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="./randomRegress.html" rel target>
+ <span class="dropdown-text">Multivariate Random Regression</span></a>
+  </li>  
     </ul>
   </li>
 </ul>
@@ -4738,7 +4742,6 @@ font-weight: 400;
   <li><a href="#adjusting-the-ci-level-and-significance-threshold" id="toc-adjusting-the-ci-level-and-significance-threshold" class="nav-link" data-scroll-target="#adjusting-the-ci-level-and-significance-threshold">Adjusting the CI level and significance threshold</a></li>
   <li><a href="#extracting-the-plot-data" id="toc-extracting-the-plot-data" class="nav-link" data-scroll-target="#extracting-the-plot-data">Extracting the plot data</a></li>
   </ul></li>
-  <li><a href="#asreml-r-v4-integration" id="toc-asreml-r-v4-integration" class="nav-link" data-scroll-target="#asreml-r-v4-integration">ASReml-R V4 integration</a></li>
   <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">Summary</a></li>
   <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
@@ -4771,7 +4774,7 @@ font-weight: 400;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">April 25, 2026</p>
+      <p class="date">April 26, 2026</p>
     </div>
   </div>
   
@@ -5375,48 +5378,6 @@ W = \hat{\boldsymbol{\tau}}^\top \mathbf{Z}^\top
 </div>
 <hr>
 </section>
-</section>
-<section id="asreml-r-v4-integration" class="level2">
-<h2 class="anchored" data-anchor-id="asreml-r-v4-integration">ASReml-R V4 integration</h2>
-<p>In practice <code>waldTest()</code> is most commonly called via its S3 method <code>waldTest.asreml()</code>, which calls <code>predict()</code> internally. The workflow below requires an ASReml-R V4 licence and is shown for reference only.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(asreml)</span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Fit a mixed model</span></span>
-<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">asreml</span>(</span>
-<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>  yield  <span class="sc">~</span> Treatment,</span>
-<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">random =</span> <span class="sc">~</span> Variety <span class="sc">+</span> Site <span class="sc">+</span> Site<span class="sc">:</span>Variety,</span>
-<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">data   =</span> trial_data</span>
-<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb41-9"><a href="#cb41-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-10"><a href="#cb41-10" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Option A: S3 convenience method ---</span></span>
-<span id="cb41-11"><a href="#cb41-11" aria-hidden="true" tabindex="-1"></a><span class="co"># predict() is called internally; df_error taken from model$nedf automatically</span></span>
-<span id="cb41-12"><a href="#cb41-12" aria-hidden="true" tabindex="-1"></a>res_asr <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
-<span id="cb41-13"><a href="#cb41-13" aria-hidden="true" tabindex="-1"></a>  model,</span>
-<span id="cb41-14"><a href="#cb41-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">classify =</span> <span class="st">&quot;Treatment&quot;</span>,</span>
-<span id="cb41-15"><a href="#cb41-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc       =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> <span class="fu">c</span>(<span class="st">&quot;Control&quot;</span>, <span class="st">&quot;LowN&quot;</span>, <span class="st">&quot;MidN&quot;</span>, <span class="st">&quot;HighN&quot;</span>),</span>
-<span id="cb41-16"><a href="#cb41-16" aria-hidden="true" tabindex="-1"></a>                       <span class="at">type =</span> <span class="st">&quot;con&quot;</span>, <span class="at">comp =</span> <span class="st">&quot;pairwise&quot;</span>)),</span>
-<span id="cb41-17"><a href="#cb41-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">test     =</span> <span class="st">&quot;F&quot;</span>,</span>
-<span id="cb41-18"><a href="#cb41-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">adjust   =</span> <span class="st">&quot;fdr&quot;</span></span>
-<span id="cb41-19"><a href="#cb41-19" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb41-20"><a href="#cb41-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-21"><a href="#cb41-21" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Option B: explicit predict() then waldTest() ---</span></span>
-<span id="cb41-22"><a href="#cb41-22" aria-hidden="true" tabindex="-1"></a>pred_asr <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, <span class="at">classify =</span> <span class="st">&quot;Treatment:Site&quot;</span>, <span class="at">vcov =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb41-23"><a href="#cb41-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-24"><a href="#cb41-24" aria-hidden="true" tabindex="-1"></a>res_by <span class="ot">&lt;-</span> <span class="fu">waldTest</span>(</span>
-<span id="cb41-25"><a href="#cb41-25" aria-hidden="true" tabindex="-1"></a>  pred_asr,</span>
-<span id="cb41-26"><a href="#cb41-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">cc       =</span> <span class="fu">list</span>(<span class="fu">list</span>(<span class="at">coef =</span> <span class="fu">c</span>(<span class="st">&quot;Control&quot;</span>, <span class="st">&quot;LowN&quot;</span>, <span class="st">&quot;MidN&quot;</span>, <span class="st">&quot;HighN&quot;</span>),</span>
-<span id="cb41-27"><a href="#cb41-27" aria-hidden="true" tabindex="-1"></a>                       <span class="at">type =</span> <span class="st">&quot;con&quot;</span>, <span class="at">comp =</span> <span class="st">&quot;pairwise&quot;</span>)),</span>
-<span id="cb41-28"><a href="#cb41-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">by       =</span> <span class="st">&quot;Site&quot;</span>,</span>
-<span id="cb41-29"><a href="#cb41-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">test     =</span> <span class="st">&quot;F&quot;</span>,</span>
-<span id="cb41-30"><a href="#cb41-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">df_error =</span> model<span class="sc">$</span>nedf,</span>
-<span id="cb41-31"><a href="#cb41-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">adjust   =</span> <span class="st">&quot;fdr&quot;</span></span>
-<span id="cb41-32"><a href="#cb41-32" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb41-33"><a href="#cb41-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb41-34"><a href="#cb41-34" aria-hidden="true" tabindex="-1"></a><span class="co"># Forest plot — one facet per site</span></span>
-<span id="cb41-35"><a href="#cb41-35" aria-hidden="true" tabindex="-1"></a><span class="fu">plot_waldTest</span>(res_by, <span class="at">facet =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<hr>
 </section>
 <section id="summary" class="level2">
 <h2 class="anchored" data-anchor-id="summary">Summary</h2>

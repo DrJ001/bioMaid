@@ -570,53 +570,6 @@ print(p_custom)
 
 ---
 
-## ASReml-R V4 integration
-
-In practice `waldTest()` is most commonly called via its S3 method
-`waldTest.asreml()`, which calls `predict()` internally. The workflow below
-requires an ASReml-R V4 licence and is shown for reference only.
-
-```{r asreml_workflow}
-#| eval: false
-library(asreml)
-
-# Fit a mixed model
-model <- asreml(
-  yield  ~ Treatment,
-  random = ~ Variety + Site + Site:Variety,
-  data   = trial_data
-)
-
-# --- Option A: S3 convenience method ---
-# predict() is called internally; df_error taken from model$nedf automatically
-res_asr <- waldTest(
-  model,
-  classify = "Treatment",
-  cc       = list(list(coef = c("Control", "LowN", "MidN", "HighN"),
-                       type = "con", comp = "pairwise")),
-  test     = "F",
-  adjust   = "fdr"
-)
-
-# --- Option B: explicit predict() then waldTest() ---
-pred_asr <- predict(model, classify = "Treatment:Site", vcov = TRUE)
-
-res_by <- waldTest(
-  pred_asr,
-  cc       = list(list(coef = c("Control", "LowN", "MidN", "HighN"),
-                       type = "con", comp = "pairwise")),
-  by       = "Site",
-  test     = "F",
-  df_error = model$nedf,
-  adjust   = "fdr"
-)
-
-# Forest plot — one facet per site
-plot_waldTest(res_by, facet = TRUE)
-```
-
----
-
 ## Summary
 
 | Task | Specification |
