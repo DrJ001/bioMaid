@@ -67,107 +67,131 @@ print.pc_interactive <- function(x, ...) {
 
 ## Inject hover-band JavaScript into a plotly dotplot.
 ##
-## On plotly_hover the criterion band for the active panel shifts to be
-## centred on the hovered variety's predicted value ([x - crit, x + crit])
-## and all points in that panel are recoloured: green (significantly better),
-## blue (not significant), red (significantly worse).  plotly_unhover restores
-## the original band position and colours.
+## ggplotly converts geom_rect into a scatter trace with fill="toself", NOT
+## a layout.shape.  layout.shapes are the only thing Plotly.relayout() can
+## move at runtime.  So we:
+##   1. Remove the fill="toself" traces (the ggplotly-converted bands).
+##   2. Add equivalent layout.shapes that Plotly.relayout() CAN update.
+##   3. Inject JavaScript that updates those shapes on hover.
 ##
 ## hover_data: named list, keys = plotly xaxis names ("x", "x2", ...)
-##   Each element has: crit, orig_x0, orig_x1
+##   Each element has: crit, orig_x0, orig_x1, n_vars
 #' @noRd
 .pc_add_hover_js <- function(p_plotly, hover_data) {
 
+  # ---- Step 1: remove fill="toself" traces (geom_rect bands) -------------
+  is_band_trace <- function(tr) {
+    isTRUE(tr$fill == "toself")
+  }
+  p_plotly$x$data <- Filter(Negate(is_band_trace), p_plotly$x$data)
+
+  # ---- Step 2: add proper layout.shapes for each panel -------------------
+  # Use yref = "y" / "y2" ... with data coordinates so each shape is
+  # confined to its own subplot.
+  # The continuous y-axis (y_pos) ranges from 0.5 to n_vars + 0.5.
+  xax_names <- names(hover_data)
+  shapes <- lapply(seq_along(xax_names), function(i) {
+    xax   <- xax_names[i]
+    yax   <- if (xax == "x") "y" else paste0("y", sub("^x", "", xax))
+    panel <- hover_data[[xax]]
+    list(
+      type      = "rect",
+      xref      = xax,
+      yref      = yax,
+      x0        = panel$orig_x0,
+      x1        = panel$orig_x1,
+      y0        = 0.5,
+      y1        = panel$n_vars + 0.5,
+      fillcolor = "rgba(255,239,192,0.6)",
+      line      = list(width = 0L),
+      layer     = "below"
+    )
+  })
+  p_plotly$x$layout$shapes <- shapes
+
+  # ---- Step 3: inject hover JavaScript ------------------------------------
   panels_json <- jsonlite::toJSON(hover_data, auto_unbox = TRUE)
 
   js <- paste0("
 function(el, x) {
 
-  // Per-panel data embedded from R: criterion + original band bounds
+  // Per-panel data: criterion + original band bounds (embedded from R)
   var panelData = ", panels_json, ";
 
-  // ---- Initialise: read shapes and traces from the rendered plot ---------
-
-  // Map xref -> shape index (0-based) for rect shapes (the criterion band)
+  // Map xref -> shape index (0-based) — indices match the shapes we added
   var axisShape = {};
-  var shapes = x.layout.shapes || [];
-  shapes.forEach(function(shape, idx) {
-    if (shape.type === 'rect') {
-      axisShape[shape.xref || 'x'] = idx;
-    }
+  (x.layout.shapes || []).forEach(function(shape, idx) {
+    if (shape.type === 'rect') axisShape[shape.xref || 'x'] = idx;
   });
 
-  // Map xaxis -> [{traceIdx, origColours}] for marker traces
-  // Skip diamond-symbol traces (the reference variety overlay).
+  // Map xaxis -> [traceIdx, ...] for scatter+marker traces.
+  // Exclude fill traces (bands, already removed) and reference diamonds.
   var axisTraces = {};
   var origColours = {};
   x.data.forEach(function(trace, idx) {
     if (trace.type !== 'scatter') return;
+    if (trace.fill === 'toself') return;            // skip any residual bands
+    var mode = trace.mode || '';
+    if (mode.indexOf('markers') < 0) return;        // skip line-only traces
     var sym = trace.marker ? trace.marker.symbol : null;
-    if (sym === 'diamond' || sym === 18) return;   // skip reference diamond
+    if (sym === 'diamond' || sym === 18) return;    // skip reference diamond
     var xax = trace.xaxis || 'x';
     if (!axisTraces[xax]) axisTraces[xax] = [];
     axisTraces[xax].push(idx);
-    // Save original colours (array or single string)
-    origColours[idx] = (trace.marker && trace.marker.color)
-                         ? trace.marker.color
-                         : '#4E79A7';
+    origColours[idx] = (trace.marker && trace.marker.color !== undefined)
+                         ? trace.marker.color : '#4E79A7';
   });
 
-  // ---- Hover handler ----------------------------------------------------
+  // ---- Hover: move band + recolour points --------------------------------
   el.on('plotly_hover', function(eventData) {
     if (!eventData.points || !eventData.points.length) return;
     var pt      = eventData.points[0];
     var traceEl = el._fullData[pt.curveNumber];
-    var xax     = traceEl.xaxis || 'x';
+    var xax     = (traceEl && traceEl.xaxis) ? traceEl.xaxis : 'x';
     var panel   = panelData[xax];
     if (!panel) return;
 
     var hX   = pt.x;
     var crit = panel.crit;
 
-    // --- Move the band ---
+    // Move the band shape
     var si = axisShape[xax];
     if (si !== undefined) {
-      var shapeUpdate = {};
-      shapeUpdate['shapes[' + si + '].x0'] = hX - crit;
-      shapeUpdate['shapes[' + si + '].x1'] = hX + crit;
-      Plotly.relayout(el, shapeUpdate);
+      var su = {};
+      su['shapes[' + si + '].x0'] = hX - crit;
+      su['shapes[' + si + '].x1'] = hX + crit;
+      Plotly.relayout(el, su);
     }
 
-    // --- Recolour points -------------------------------------------------
-    // Build a colour array for every point in every marker trace of
-    // this panel by reading pred values from el._fullData.
-    var traces = axisTraces[xax] || [];
-    traces.forEach(function(ti) {
+    // Recolour all marker points in this panel
+    (axisTraces[xax] || []).forEach(function(ti) {
       var td = el._fullData[ti];
       if (!td || !td.x) return;
-      var newCols = td.x.map(function(pv) {
-        if (pv > hX + crit) return '#59A14F';   // sig. better  (green)
-        if (pv < hX - crit) return '#E15759';   // sig. worse   (red)
-        return '#4E79A7';                         // not sig.     (blue)
+      var cols = td.x.map(function(pv) {
+        if (pv > hX + crit) return '#59A14F';   // sig. better (green)
+        if (pv < hX - crit) return '#E15759';   // sig. worse  (red)
+        return '#4E79A7';                         // not sig.    (blue)
       });
-      Plotly.restyle(el, {'marker.color': [newCols]}, [ti]);
+      Plotly.restyle(el, {'marker.color': [cols]}, [ti]);
     });
   });
 
-  // ---- Unhover handler: restore original state --------------------------
+  // ---- Unhover: restore original state -----------------------------------
   el.on('plotly_unhover', function() {
-    // Restore band bounds for every panel
+    // Restore each panel's band
     Object.keys(axisShape).forEach(function(xax) {
       var panel = panelData[xax];
       if (!panel) return;
       var si = axisShape[xax];
-      var shapeUpdate = {};
-      shapeUpdate['shapes[' + si + '].x0'] = panel.orig_x0;
-      shapeUpdate['shapes[' + si + '].x1'] = panel.orig_x1;
-      Plotly.relayout(el, shapeUpdate);
+      var su = {};
+      su['shapes[' + si + '].x0'] = panel.orig_x0;
+      su['shapes[' + si + '].x1'] = panel.orig_x1;
+      Plotly.relayout(el, su);
     });
-    // Restore original colours for every trace
+    // Restore each trace's original colours
     Object.keys(origColours).forEach(function(ti) {
       var col = origColours[ti];
-      Plotly.restyle(el, {'marker.color': [Array.isArray(col) ? col : col]},
-                     [parseInt(ti)]);
+      Plotly.restyle(el, {'marker.color': col}, [parseInt(ti)]);
     });
   });
 }
@@ -925,7 +949,8 @@ plot_compare <- function(res,
         list(
           crit    = as.numeric(unique(sub$crit)[1L]),
           orig_x0 = as.numeric(unique(sub$band_lo)[1L]),
-          orig_x1 = as.numeric(unique(sub$band_hi)[1L])
+          orig_x1 = as.numeric(unique(sub$band_hi)[1L]),
+          n_vars  = as.integer(nrow(sub))   # needed for shape y1 bound
         )
       })
       # Plotly names axes "x", "x2", "x3", ...
