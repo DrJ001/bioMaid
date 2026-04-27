@@ -129,25 +129,37 @@ knit_print.pc_interactive <- function(x, ...) {
 #' the direct return value of the chunk so that knitr embeds it correctly.
 #'
 #' @param x A `pc_interactive` object returned by
-#'   `plot_compare(..., interactive = TRUE)` or by `+.pc_interactive`.
+#'   `plot_compare(..., interactive = TRUE)`.
+#' @param height Numeric or `NULL`. Widget height in pixels passed to
+#'   [plotly::ggplotly()].  `NULL` (default) lets plotly choose its own
+#'   default height (~400 px), which is often too short when the plot has
+#'   multiple facet panels each showing many varieties.  A sensible rule of
+#'   thumb: 180 px per panel row (e.g. `height = 700` for 4 panels in a
+#'   2 × 2 grid).
+#' @param width Numeric or `NULL`. Widget width in pixels.  `NULL` (default)
+#'   uses 100 % of the container width.
 #' @param ... Unused; included for future extensibility.
 #'
 #' @return A [plotly::plotly] htmlwidget.
 #'
 #' @examples
 #' \dontrun{
-#' p_int <- plot_compare(res, type = "dotplot", interactive = TRUE) +
-#'   ggplot2::ggtitle("Hover to explore")
-#' as_plotly(p_int)   # embed in a knitr/Quarto chunk
+#' # Single-group dotplot — default height is fine
+#' as_plotly(plot_compare(res, type = "dotplot", interactive = TRUE))
+#'
+#' # Four-panel dotplot — set a taller height so panels don't overlap
+#' as_plotly(plot_compare(res, type = "dotplot", interactive = TRUE),
+#'           height = 700)
 #' }
 #'
 #' @export
-as_plotly <- function(x, ...) {
+as_plotly <- function(x, height = NULL, width = NULL, ...) {
   if (!inherits(x, "pc_interactive"))
     stop("'x' must be a pc_interactive object returned by plot_compare().")
   if (!requireNamespace("plotly", quietly = TRUE))
     stop("Package 'plotly' is required. Install with: install.packages('plotly')")
-  p_plotly <- plotly::ggplotly(x$plot, tooltip = "text")
+  p_plotly <- plotly::ggplotly(x$plot, tooltip = "text",
+                               height = height, width = width)
   if (!is.null(x$hover_data))
     p_plotly <- .pc_add_hover_js(p_plotly, x$hover_data)
   p_plotly

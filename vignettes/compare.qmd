@@ -451,8 +451,9 @@ original state.
 
 ```{r interactive}
 #| eval: true
-# as_plotly() returns the plotly htmlwidget directly so knitr embeds it correctly
-as_plotly(plot_compare(res_hsd, type = "dotplot", interactive = TRUE))
+# height = 700 gives each of the 4 panels ~175 px so they don't overlap
+as_plotly(plot_compare(res_hsd, type = "dotplot", interactive = TRUE),
+          height = 700)
 ```
 
 > **Note:** `interactive = TRUE` requires the **plotly** package
