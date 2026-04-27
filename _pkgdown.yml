@@ -1,0 +1,89 @@
+url: https://DrJ001.github.io/biomAid/
+
+destination: docs
+
+template:
+  bootstrap: 5
+  bootswatch: litera
+  theme: arrow-light
+
+home:
+  title: "biomAid — Biometric Tools for Plant Breeding Trials"
+  description: >
+    Pairwise comparison criteria (HSD/LSD/Bonferroni), Wald tests on
+    fixed-effect contrasts, Factor Analytic Selection Tools (FAST),
+    multivariate random and fixed regression, field trial layout utilities,
+    and simulation tools for multi-environment plant breeding trials fitted
+    with ASReml-R V4 mixed models.
+
+navbar:
+  structure:
+    left:  [intro, reference, vignettes]
+    right: [github]
+  components:
+    vignettes:
+      text: Vignettes
+      menu:
+        - text: "Multiple Comparison Criteria"
+          href: compare.html
+        - text: "Wald Tests on Fixed-Effect Contrasts"
+          href: waldTest.html
+        - text: "Multivariate Random Regression"
+          href: randomRegress.html
+        - text: "Multivariate Fixed-Effects Regression"
+          href: fixedRegress.html
+        - text: "Extracting and Padding Field Trial Layouts"
+          href: padTrial.html
+
+reference:
+  - title: "Pairwise Comparison Criteria"
+    desc: >
+      Compute Tukey HSD, LSD, or Bonferroni comparison criteria from
+      ASReml-R V4 predicted values, and visualise the results as a dot plot,
+      half-criterion error bars, compact letter display, or pairwise heatmap.
+    contents:
+      - compare
+      - plot_compare
+      - as_plotly
+
+  - title: "Wald Tests on Fixed-Effect Contrasts"
+    desc: >
+      Test user-specified linear contrasts of predicted values using Wald
+      chi-squared or approximate F statistics, with optional multiplicity
+      adjustment. Forest-plot visualisation included.
+    contents:
+      - waldTest
+      - waldTest.asreml
+      - plot_waldTest
+
+  - title: "Random Regression"
+    desc: >
+      Decompose variety BLUPs into efficiency and responsiveness components
+      via G-matrix conditioning (multivariate random regression).
+    contents:
+      - randomRegress
+      - plot_randomRegress
+
+  - title: "Fixed Regression"
+    desc: >
+      OLS regression of treatment BLUEs across environments (multivariate
+      fixed-effects regression).
+    contents:
+      - fixedRegress
+      - plot_fixedRegress
+
+  - title: "Factor Analytic Selection Tools"
+    desc: >
+      FAST and interaction class (iClass) approaches derived from Factor
+      Analytic mixed models.
+    contents:
+      - fast
+
+  - title: "Field Trial Utilities"
+    desc: >
+      Simulate balanced split-plot multi-environment trial data, and extract
+      or pad field trial layouts from partially observed grids.
+    contents:
+      - simTrialData
+      - padTrial
+      - plot_padTrial
