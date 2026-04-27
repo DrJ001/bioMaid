@@ -619,6 +619,22 @@ function(el, x) {
   res$n_group <- as.numeric(ave(seq_len(nrow(res)), res$Group,
                                 FUN = length))
 
+  res <- res[order(res$Group, res$y_pos), ]
+
+  # var_label: group-namespaced ordered factor for static discrete y axis.
+  # Format "Group\x01Variety" (SOH separator) lets scale_y_discrete strip
+  # the prefix in labels.  \x01 (ASCII SOH) is safe in R string literals
+  # and cannot appear in group or variety names produced by biomAid.
+  # Levels are ordered by y_pos ascending within each group (y_pos 1 = lowest
+  # pred = bottom of panel, y_pos n = highest pred = top of panel).
+  # This is the ONLY correct way to get per-panel variety labels with
+  # facet_wrap(scales="free"): unlist(grp_labels) prepends the list element
+  # name, so bare position lookups return NA for all panels.
+  res$var_label <- factor(
+    paste0(res$Group, "\x01", res$Variety),
+    levels = unique(paste0(res$Group, "\x01", res$Variety))
+  )
+
   res[order(res$Group, res$rank), ]
 }
 
@@ -732,120 +748,162 @@ function(el, x) {
                        paste0("Sig. ", df$sig, " (", crit_col, ")")))
   )
 
-  # y-axis label lookup: numeric position -> variety name, per group
-  # We build a list: group -> named vector (pos -> name)
-  grp_labels <- lapply(unique(df$Group), function(g) {
-    sub <- df[df$Group == g, ]
-    stats::setNames(sub$Variety, sub$y_pos)
-  })
-  names(grp_labels) <- unique(df$Group)
+  # ---- y-axis strategy: static vs interactive --------------------------------
+  #
+  # STATIC (interactive = FALSE):
+  #   Use var_label (a "Group\x00Variety" ordered factor) as the y aesthetic.
+  #   scale_y_discrete strips the group prefix in labels.  Each facet panel
+  #   automatically shows only its own group's factor levels, in y_pos order.
+  #   geom_rect uses ymin = -Inf / ymax = Inf to span the full panel height,
+  #   which works on a discrete scale and avoids passing finite band bounds.
+  #
+  # INTERACTIVE (interactive = TRUE):
+  #   Keep y = y_pos (numeric) so band layout.shapes can be positioned and
+  #   moved by Plotly.relayout() in data coordinates.  The label function
+  #   (grp_labels[[1L]] lookup) is correct for single-group plots; for
+  #   multi-group interactive the hover tooltip still shows variety names.
 
-  # For a single group, set up the label function for scale_y_continuous
-  # (for multi-group free-scale facets each panel gets its own labels
-  # automatically since y_pos 1..n is consistent within each group)
-  all_y   <- sort(unique(df$y_pos))
-  all_lbl <- grp_labels[[1L]][as.character(all_y)]  # use group 1 as template
-  # for multi-group the varieties differ per panel — use position-based labels
-  # that work across all groups (same position = same rank within group)
-  label_fn <- if (n_groups == 1L) {
-    function(breaks) {
-      lbl <- grp_labels[[1L]][as.character(breaks)]
-      ifelse(is.na(lbl), "", lbl)
-    }
-  } else {
-    # With facet free-scales each panel has its own range; ggplot2 calls the
-    # label function per panel with the panel's break values.  Since y_pos
-    # maps 1..n within each group the same label function applies globally.
-    function(breaks) {
-      # Look up across all groups combined
-      combined <- unlist(grp_labels)
-      lbl <- combined[as.character(breaks)]
-      # If duplicated (same pos in different groups) just take first
-      ifelse(is.na(lbl), "", lbl)
-    }
-  }
-
-  # Start the plot — geom_rect is added separately below so that a
-  # conditional NULL never hits +.gg (which does not accept NULL).
-  p <- ggplot2::ggplot(df, ggplot2::aes(x = pred, y = y_pos))
-
-  # Criterion band — static only.  For interactive plots the band is added
-  # as a proper layout.shape by .pc_add_hover_js() AFTER ggplotly conversion
-  # so Plotly.relayout() can move it on hover.  Including geom_rect for
-  # interactive mode produces a fill="toself" scatter trace that cannot be
-  # moved; filtering it out also removes panel/strip background traces.
   if (!interactive) {
+
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = pred, y = var_label))
+
+    # Criterion band: spans full panel height on the discrete scale
     p <- p + ggplot2::geom_rect(
       data        = band_df,
       ggplot2::aes(xmin = band_lo, xmax = band_hi,
-                   ymin = y_lo,   ymax = y_hi),
+                   ymin = -Inf,    ymax = Inf),
       fill        = "#FFEFC0",
       alpha       = 0.6,
       inherit.aes = FALSE
     )
-  }
 
-  p <- p +
-    # Reference line
-    ggplot2::geom_vline(
-      data      = band_df,
-      ggplot2::aes(xintercept = ref_pred),
-      linetype  = "dashed",
-      linewidth = 0.45,
-      colour    = "grey40"
-    ) +
-    # All points — reference variety included so it stays at its correct
-    # y_pos; the diamond overlay drawn below visually replaces the dot
-    ggplot2::geom_point(
-      ggplot2::aes(colour = sig, text = tooltip_text),
-      size = 2.4,
-      ...
-    ) +
-    ggplot2::scale_colour_manual(
-      values = col_vals,
-      labels = col_labels,
-      name   = NULL
-    ) +
-    ggplot2::scale_y_continuous(
-      breaks = all_y,
-      labels = label_fn,
-      expand = ggplot2::expansion(add = 0.6)
-    ) +
-    ggplot2::labs(
-      x       = "Predicted value",
-      y       = NULL,
-      caption = caption
-    ) +
-    theme +
-    ggplot2::theme(
-      strip.background = ggplot2::element_rect(fill = "grey92",
-                                               colour = "grey70"),
-      strip.text       = ggplot2::element_text(face = "bold"),
-      legend.position  = "bottom",
-      panel.spacing    = ggplot2::unit(0.5, "lines"),
-      axis.text.y      = ggplot2::element_text(size = 7)
-    )
-
-  # Reference variety: diamond overlay at its correct y_pos
-  if (using_ref) {
-    ref_rows <- df[df$Variety == reference, ]
-    if (nrow(ref_rows) > 0L) {
-      ref_rows$tooltip_text <- paste0(
-        "<b>", ref_rows$Variety, "</b> (reference)",
-        "<br>Predicted: ", round(ref_rows$pred, 2L),
-        "<br>Group: ", ref_rows$Group
+    p <- p +
+      ggplot2::geom_vline(
+        data      = band_df,
+        ggplot2::aes(xintercept = ref_pred),
+        linetype  = "dashed",
+        linewidth = 0.45,
+        colour    = "grey40"
+      ) +
+      ggplot2::geom_point(
+        ggplot2::aes(colour = sig, text = tooltip_text),
+        size = 2.4,
+        ...
+      ) +
+      ggplot2::scale_colour_manual(
+        values = col_vals,
+        labels = col_labels,
+        name   = NULL
+      ) +
+      ggplot2::scale_y_discrete(
+        # Strip the "Group\x01" namespace prefix — show only the variety name
+        labels  = function(x) sub("^[^\x01]+\x01", "", x),
+        expand  = ggplot2::expansion(add = 0.6)
+      ) +
+      ggplot2::labs(x = "Predicted value", y = NULL, caption = caption) +
+      theme +
+      ggplot2::theme(
+        strip.background = ggplot2::element_rect(fill = "grey92",
+                                                 colour = "grey70"),
+        strip.text       = ggplot2::element_text(face = "bold"),
+        legend.position  = "bottom",
+        panel.spacing    = ggplot2::unit(0.5, "lines"),
+        axis.text.y      = ggplot2::element_text(size = 7)
       )
-      p <- p +
-        ggplot2::geom_point(
-          data        = ref_rows,
-          ggplot2::aes(x = pred, y = y_pos, text = tooltip_text),
-          shape       = 18L,
-          size        = 4.5,
-          colour      = "grey20",
-          inherit.aes = FALSE
+
+    # Reference variety: diamond overlay using var_label for y
+    if (using_ref) {
+      ref_rows <- df[df$Variety == reference, ]
+      if (nrow(ref_rows) > 0L) {
+        ref_rows$tooltip_text <- paste0(
+          "<b>", ref_rows$Variety, "</b> (reference)",
+          "<br>Predicted: ", round(ref_rows$pred, 2L),
+          "<br>Group: ",     ref_rows$Group
         )
+        p <- p +
+          ggplot2::geom_point(
+            data        = ref_rows,
+            ggplot2::aes(x = pred, y = var_label, text = tooltip_text),
+            shape       = 18L,
+            size        = 4.5,
+            colour      = "grey20",
+            inherit.aes = FALSE
+          )
+      }
     }
-  }
+
+  } else {
+
+    # --- Interactive branch: numeric y_pos --------------------------------
+    grp_labels <- lapply(unique(df$Group), function(g) {
+      sub <- df[df$Group == g, ]
+      stats::setNames(sub$Variety, sub$y_pos)
+    })
+    names(grp_labels) <- unique(df$Group)
+    all_y    <- sort(unique(df$y_pos))
+    label_fn <- function(breaks) {
+      lbl <- grp_labels[[1L]][as.character(breaks)]
+      ifelse(is.na(lbl), "", lbl)
+    }
+
+    p <- ggplot2::ggplot(df, ggplot2::aes(x = pred, y = y_pos))
+
+    p <- p +
+      ggplot2::geom_vline(
+        data      = band_df,
+        ggplot2::aes(xintercept = ref_pred),
+        linetype  = "dashed",
+        linewidth = 0.45,
+        colour    = "grey40"
+      ) +
+      ggplot2::geom_point(
+        ggplot2::aes(colour = sig, text = tooltip_text),
+        size = 2.4,
+        ...
+      ) +
+      ggplot2::scale_colour_manual(
+        values = col_vals,
+        labels = col_labels,
+        name   = NULL
+      ) +
+      ggplot2::scale_y_continuous(
+        breaks = all_y,
+        labels = label_fn,
+        expand = ggplot2::expansion(add = 0.6)
+      ) +
+      ggplot2::labs(x = "Predicted value", y = NULL, caption = caption) +
+      theme +
+      ggplot2::theme(
+        strip.background = ggplot2::element_rect(fill = "grey92",
+                                                 colour = "grey70"),
+        strip.text       = ggplot2::element_text(face = "bold"),
+        legend.position  = "bottom",
+        panel.spacing    = ggplot2::unit(0.5, "lines"),
+        axis.text.y      = ggplot2::element_text(size = 7)
+      )
+
+    # Reference variety: diamond overlay using y_pos
+    if (using_ref) {
+      ref_rows <- df[df$Variety == reference, ]
+      if (nrow(ref_rows) > 0L) {
+        ref_rows$tooltip_text <- paste0(
+          "<b>", ref_rows$Variety, "</b> (reference)",
+          "<br>Predicted: ", round(ref_rows$pred, 2L),
+          "<br>Group: ",     ref_rows$Group
+        )
+        p <- p +
+          ggplot2::geom_point(
+            data        = ref_rows,
+            ggplot2::aes(x = pred, y = y_pos, text = tooltip_text),
+            shape       = 18L,
+            size        = 4.5,
+            colour      = "grey20",
+            inherit.aes = FALSE
+          )
+      }
+    }
+
+  }  # end static / interactive branch
 
   if (n_groups > 1L)
     p <- p + ggplot2::facet_wrap(~ Group, scales = "free")
@@ -863,21 +921,11 @@ function(el, x) {
     "<br>Group: ",     df$Group
   )
 
-  # Build per-group y-axis label lookup (same approach as dotplot)
-  grp_labels_l <- lapply(unique(df$Group), function(g) {
-    sub <- df[df$Group == g, ]
-    stats::setNames(sub$Variety, sub$y_pos)
-  })
-  names(grp_labels_l) <- unique(df$Group)
-  all_y_l   <- sort(unique(df$y_pos))
-  label_fn_l <- function(breaks) {
-    combined <- unlist(grp_labels_l)
-    lbl <- combined[as.character(breaks)]
-    ifelse(is.na(lbl), "", lbl)
-  }
-
+  # Use var_label (discrete, group-namespaced) for the y axis so that
+  # each facet panel shows its own correctly ordered variety labels.
+  # The scale_y_discrete label function strips the "Group\x00" prefix.
   p <- ggplot2::ggplot(df,
-         ggplot2::aes(x = pred, y = y_pos)) +
+         ggplot2::aes(x = pred, y = var_label)) +
     ggplot2::geom_vline(
       data      = unique(df[, c("Group", "ref_pred")]),
       ggplot2::aes(xintercept = ref_pred),
@@ -896,9 +944,8 @@ function(el, x) {
       colour   = "grey20",
       fontface = "bold"
     ) +
-    ggplot2::scale_y_continuous(
-      breaks = all_y_l,
-      labels = label_fn_l,
+    ggplot2::scale_y_discrete(
+      labels = function(x) sub("^[^\x01]+\x01", "", x),
       expand = ggplot2::expansion(add = 0.6)
     ) +
     ggplot2::labs(

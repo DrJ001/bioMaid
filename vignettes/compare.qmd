@@ -305,23 +305,40 @@ because it ignores the shrinkage towards zero inherent in BLUP estimation.
 Setting `pev = FALSE` substitutes the posterior variance
 $\mathbf{G} - \mathbf{PEV}$, giving a more appropriate — and larger — criterion.
 
-```{r pev_false}
-#| eval: false
-# Illustrative — requires a model with Variety in the random effects:
-# model_rnd <- asreml(yield ~ Treatment * Site,
-#                     random = ~ Variety + at(Site):Rep, ...)
+We refit the model with **Variety in the random effects** and
+`Treatment × Site` fixed, so `predict()` returns BLUPs rather than BLUEs.
 
+```{r pev_false}
+#| cache: true
+#| results: hide
+model_rnd <- asreml(
+  yield    ~ Treatment * Site,
+  random   = ~ Variety + at(Site):Rep,
+  residual = ~ dsum(~ ar1(Row):ar1(Column) | Site),
+  data     = dat,
+  maxit    = 30L
+)
+model_rnd <- update(model_rnd)
+```
+
+```{r pev_false_compare}
 res_pev  <- compare(model_rnd, term = "Variety", type = "HSD", pev = TRUE)
 res_post <- compare(model_rnd, term = "Variety", type = "HSD", pev = FALSE)
 
-cat("HSD (PEV):            ", round(res_pev$HSD[1L],  1L), "\n")
-cat("HSD (posterior var.): ", round(res_post$HSD[1L], 1L), "\n")
-# The posterior-variance HSD is larger, reflecting true BLUP uncertainty.
+cat("HSD (PEV):                    ", round(res_pev$HSD[1L],  1L), "\n")
+cat("HSD (posterior variance):     ", round(res_post$HSD[1L], 1L), "\n")
+cat("Ratio (posterior / PEV HSD):  ",
+    round(res_post$HSD[1L] / res_pev$HSD[1L], 2L), "\n")
 ```
 
+The posterior-variance HSD is larger than the PEV-based HSD, reflecting the
+additional uncertainty that BLUP shrinkage introduces.  Using `pev = TRUE`
+on a random-effects term underestimates the true uncertainty of a difference
+between BLUPs and will declare too many pairs significant.
+
 > **Note:** `pev = FALSE` is only meaningful when `term` is in the **random**
-> part of the model.  In the current vignette Variety is fixed, so
-> `pev = FALSE` is not applicable here.
+> part of the model.  When the term is fixed (as in Examples 1–4 above),
+> `pev = TRUE` (the default) is always correct.
 
 ---
 
@@ -483,26 +500,6 @@ df_heat <- plot_compare(res_hsd |> subset(Site == "Env1"),
 head(df_heat[, c("Var_x", "Var_y", "diff", "sig")])
 ```
 
-The data frame can be passed directly into any `ggplot2` workflow:
-
-```{r bespoke}
-#| fig-height: 5
-df_env1 <- plot_compare(res_hsd |> subset(Site == "Env1"),
-                        type = "dotplot", return_data = TRUE)
-
-ggplot(df_env1, aes(x = pred, y = reorder(Variety, pred),
-                     colour = sig)) +
-  geom_point(size = 3) +
-  geom_errorbarh(aes(xmin = band_lo, xmax = band_hi),
-                 height = 0, linewidth = 0.4, colour = "grey60") +
-  scale_colour_manual(values = c(ns = "#4E79A7", sig = "#E15759"),
-                      name = NULL) +
-  labs(x = "Predicted value", y = NULL,
-       title = "Custom: dot + criterion bar plot (Env1)") +
-  theme_bw() +
-  theme(legend.position = "bottom")
-```
-
 The ggplot object returned by `plot_compare()` can also be extended with `+`:
 
 ```{r extend}
@@ -555,5 +552,3 @@ Piepho, H.P. (2004). An algorithm for a letter-based representation of all
 pairwise comparisons. *Journal of Computational and Graphical Statistics*,
 **13**(2), 456–466.
 
-Gilmour, A.R., Gogel, B.J., Cullis, B.R. & Thompson, R. (2009).
-*ASReml User Guide Release 3.0*. VSN International Ltd, Hemel Hempstead, UK.
