@@ -32,3 +32,9 @@ scratch/
 # Quarto intermediate build artefacts (rendered HTML in docs/ IS committed)
 vignettes/.quarto/
 vignettes/*_files/
+
+# knitr chunk caches (re-generated on render; not needed in source control)
+vignettes/*_cache/
+
+# Stray R graphics output
+Rplots.pdf

@@ -12,6 +12,12 @@ website:
             href: waldTest.html
           - text: "Multivariate Random Regression"
             href: randomRegress.html
+          - text: "Multivariate Fixed-Effects Regression"
+            href: fixedRegress.html
+          - text: "Extracting and Padding Field Trial Layouts"
+            href: padTrial.html
+          - text: "Multiple Comparison Criteria"
+            href: compare.html
 
 format:
   html:

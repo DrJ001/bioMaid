@@ -1,0 +1,821 @@
+---
+title: |
+  **Mathematical Framework for Multivariate Random Regression\
+  of Treatment BLUPs in Multi-Environment Trials**
+subtitle: "Theory underlying `randomRegress()` in the BioMaid package"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    keep_tex: false
+    fig_caption: true
+    highlight: tango
+header-includes:
+  - \usepackage{amsmath, amssymb}
+  - \usepackage{unicode-math}
+  - \newcommand{\bm}[1]{\symbf{#1}}
+  - \usepackage{booktabs}
+  - \usepackage{array}
+  - \usepackage{xcolor}
+  - \usepackage{geometry}
+  - \geometry{margin=2.5cm}
+  - \usepackage{setspace}
+  - \onehalfspacing
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyhead[L]{\textit{BioMaid --- randomRegress()}}
+  - \fancyhead[R]{\thepage}
+  - \fancyfoot[C]{}
+  - \renewcommand{\headrulewidth}{0.4pt}
+  - \definecolor{codegray}{gray}{0.95}
+  - \usepackage{mdframed}
+  - \newmdenv[backgroundcolor=codegray, linecolor=gray!50, linewidth=0.5pt, innerleftmargin=8pt, innerrightmargin=8pt, innertopmargin=6pt, innerbottommargin=6pt]{codebox}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+\newpage
+
+# Introduction and Motivation
+
+## The Multi-Environment Trial Problem
+
+Plant breeding programmes routinely evaluate candidate varieties across multiple
+environments (locations, years, or both) under different management treatments
+--- irrigation levels, nitrogen rates, fungicide regimes, and so on.  The
+central scientific questions are:
+
+1. Which varieties perform best in absolute terms across all conditions
+   (**efficiency**)?
+2. Which varieties derive the greatest additional benefit from a treatment
+   beyond what their baseline performance would predict (**responsiveness**)?
+
+These two traits are often heritable, partially correlated, and of independent
+agronomic and commercial interest.  A highly efficient variety may or may not be
+highly responsive; a variety breeder might select for one, the other, or a
+weighted combination depending on the target production system.
+
+## Relationship to Finlay--Wilkinson Regression
+
+The classical Finlay--Wilkinson (1963) regression regresses a variety's
+treatment-specific mean against the environment mean for that treatment, using
+the ordinary-least-squares slope as a stability index.  The present framework
+is its **random-effects analogue**: instead of regressing observed means, it
+regresses the *genetic* (BLUP) values of one treatment on another, using the
+genetic covariance structure from a mixed model.  This has several advantages:
+
+- The regression is driven by the genetic ($\bm{G}$) matrix rather than
+  phenotypic means, so it is properly calibrated for heritability.
+- Variety-level uncertainty is propagated through the prediction error variance
+  (PEV) of the BLUPs.
+- The framework extends naturally to any number of treatments $k \geq 2$ via
+  multivariate conditional normal theory, and supports four distinct
+  conditioning schemes through the `type` argument.
+
+## Overview of Conditioning Schemes
+
+`randomRegress()` supports four built-in schemes, all grounded in the same
+multivariate conditional normal formula but differing in the **conditioning set**
+$A_j$ chosen for each treatment $j$:
+
+| `type` | Conditioning set $A_j$ for treatment $j$ | `TGmat` structure |
+|:-------|:------------------------------------------|:-----------------|
+| `"baseline"` | $\{T_1\}$ for all $j > 1$ | Block-diagonal |
+| `"sequential"` | $\{T_1, \ldots, T_{j-1}\}$ | **Diagonal** |
+| `"partial"` | All treatments except $j$ | Dense |
+| `"custom"` | User-specified | Depends |
+
+\newpage
+
+# The Linear Mixed Model
+
+## Model Specification
+
+Consider an experiment with $k$ treatments, $s$ environments (sites), $n$
+varieties, and $r$ replicates per treatment $\times$ site combination.  The
+composite Treatment $\times$ Site factor TSite has $ks$ levels.  The linear
+mixed model is:
+
+$$
+\bm{y} = \bm{X}\bm{\tau} + \bm{Z}_g \bm{u} + \bm{Z}_b \bm{b} + \bm{e}
+$$
+
+where:
+
+| Symbol | Dimension | Description |
+|:-------|:----------|:------------|
+| $\bm{y}$ | $N \times 1$ | vector of observed yields |
+| $\bm{\tau}$ | $ks \times 1$ | fixed Treatment $\times$ Site effects |
+| $\bm{u}$ | $ksn \times 1$ | random variety $\times$ TSite BLUPs |
+| $\bm{b}$ | $\cdot$ | random blocking / spatial effects |
+| $\bm{e}$ | $N \times 1$ | residual errors |
+
+The variety random effects $\bm{u}$ have the distribution:
+
+$$
+\bm{u} \sim \mathcal{N}(\bm{0},\ \bm{G} \otimes \bm{I}_n)
+$$
+
+where $\bm{G}$ is the $ks \times ks$ genetic variance--covariance matrix across
+all Treatment $\times$ Site combinations and $\otimes$ denotes the Kronecker
+product.
+
+## The Genetic Variance--Covariance Matrix
+
+The $\bm{G}$-matrix is the central object of interest.  Its $(p,q)$ element
+$G_{pq}$ is the genetic covariance between variety BLUPs at TSite levels $p$
+and $q$.  For a single site with $k$ treatments the $k \times k$ sub-matrix is:
+
+$$
+\bm{G}_s = \begin{pmatrix}
+  G_{11} & G_{12} & \cdots & G_{1k} \\
+  G_{21} & G_{22} & \cdots & G_{2k} \\
+  \vdots & \vdots & \ddots & \vdots \\
+  G_{k1} & G_{k2} & \cdots & G_{kk}
+\end{pmatrix}
+$$
+
+where the site superscript is suppressed for clarity.
+
+## Variance Structures for the G-Matrix
+
+| Structure | Parameters | Formula |
+|:----------|:-----------|:--------|
+| Unstructured `us()` | $ks(ks+1)/2$ | $\bm{G}$ unconstrained PD |
+| Heterogeneous correlation `corgh()` | $2ks - 1$ | $\bm{D}^{1/2}\bm{R}\bm{D}^{1/2}$ |
+| Factor analytic `fa(·,q)` | $ksq + ks$ | $\bm{\Lambda}\bm{\Lambda}^\top + \bm{\Psi}$ |
+| Diagonal `diag()` | $ks$ | $\text{diag}(\sigma_1^2,\ldots,\sigma_{ks}^2)$ |
+
+For large $ks$ (e.g.\ $k=4$, $s=10$ giving $ks=40$), an FA(2) model uses
+120 parameters versus 820 for the unstructured alternative and is the
+recommended starting structure.
+
+\newpage
+
+# The Bivariate Case: Two Treatments
+
+The two-treatment case ($k = 2$) establishes all the fundamental ideas before
+they are generalised.
+
+## Joint Distribution and Conditional Result
+
+Let $u_1$ and $u_2$ denote the variety BLUPs under the baseline and active
+treatment at a given site.  They are jointly distributed as:
+
+$$
+\begin{pmatrix} u_1 \\ u_2 \end{pmatrix}
+\sim \mathcal{N}\!\left(
+  \bm{0},\;
+  \begin{pmatrix} G_{11} & G_{12} \\ G_{21} & G_{22} \end{pmatrix}
+\right)
+$$
+
+The conditional distribution of $u_2$ given $u_1$ is:
+
+$$
+u_2 \mid u_1 \sim \mathcal{N}\!\left(\beta\, u_1,\; \sigma_r^2\right)
+\qquad \text{where} \qquad
+\boxed{\beta = \frac{G_{12}}{G_{11}},
+\qquad
+\sigma_r^2 = G_{22}\!\left(1 - \rho^2\right)}
+$$
+
+and $\rho = G_{12}/\sqrt{G_{11}G_{22}}$ is the genetic correlation.
+
+## Efficiency and Responsiveness
+
+The **responsiveness BLUP** $\tilde{u}_2 = u_2 - \beta u_1$ is the residual
+from the conditional mean.  By construction:
+
+$$
+\mathbb{E}[\tilde{u}_2] = 0, \qquad
+\operatorname{Var}(\tilde{u}_2) = \sigma_r^2, \qquad
+\operatorname{Cov}(u_1,\, \tilde{u}_2) = 0
+$$
+
+The zero covariance confirms that efficiency and responsiveness are
+**orthogonal genetic traits**.
+
+\newpage
+
+# The General Conditional Framework
+
+## The Universal Formula
+
+The bivariate result extends immediately to any treatment $j$ conditioned on
+any set of treatments $A_j \subseteq \{T_1,\ldots,T_k\} \setminus \{T_j\}$.
+Partitioning the genetic distribution:
+
+$$
+\begin{pmatrix} u_j \\ \bm{u}_{A_j} \end{pmatrix}
+\sim \mathcal{N}\!\left(
+  \bm{0},\;
+  \begin{pmatrix} G_{jj} & \bm{G}_{j,A_j} \\
+                  \bm{G}_{A_j,j} & \bm{G}_{A_j,A_j} \end{pmatrix}
+\right)
+$$
+
+the conditional distribution of $u_j$ given $\bm{u}_{A_j}$ is:
+
+$$
+u_j \mid \bm{u}_{A_j} \sim
+\mathcal{N}\!\left(\bm{\beta}_j^\top \bm{u}_{A_j},\;\; \sigma_{j|A_j}^2\right)
+$$
+
+with:
+
+$$
+\boxed{
+\bm{\beta}_j = \bm{G}_{A_j,A_j}^{-1}\,\bm{G}_{A_j,j} \;\in\; \mathbb{R}^{|A_j|}
+}
+\qquad\qquad
+\boxed{
+\sigma_{j|A_j}^2 = G_{jj} - \bm{G}_{j,A_j}\,\bm{G}_{A_j,A_j}^{-1}\,\bm{G}_{A_j,j}
+}
+$$
+
+The **responsiveness BLUP** for variety $i$ under treatment $j$ is then:
+
+$$
+\tilde{u}_{ij} = u_{ij} - \bm{\beta}_j^\top\,\bm{u}_{i,A_j}
+$$
+
+This single formula encompasses all four conditioning schemes --- the schemes
+differ only in how $A_j$ is defined for each treatment.
+
+## Properties of Responsiveness BLUPs
+
+For any choice of $A_j$ the responsiveness BLUP satisfies:
+
+$$
+\mathbb{E}[\tilde{u}_{ij}] = 0, \qquad
+\operatorname{Var}(\tilde{u}_{ij}) = \sigma_{j|A_j}^2, \qquad
+\operatorname{Cov}(u_{il},\, \tilde{u}_{ij}) = 0 \;\;\forall\; T_l \in A_j
+$$
+
+The last result follows directly:
+$$
+\operatorname{Cov}(u_{l},\, \tilde{u}_{j})
+= G_{lj} - \bm{G}_{l,A_j}\,\bm{\beta}_j
+= G_{lj} - \bm{G}_{l,A_j}\,\bm{G}_{A_j,A_j}^{-1}\,\bm{G}_{A_j,j}
+$$
+which equals zero because $G_{lj} = \bm{G}_{l,A_j}\,\bm{G}_{A_j,A_j}^{-1}\,\bm{G}_{A_j,j}$
+when $T_l \in A_j$ (the conditioning set already explains all covariance with $T_l$).
+
+## The Transformation Matrix
+
+For a single site with $k$ treatments the decomposition is expressed as:
+
+$$
+\bm{T}_s\,\bm{u}_s = \tilde{\bm{u}}_s
+$$
+
+where $\bm{T}_s$ is a $k \times k$ matrix with ones on the diagonal and
+$-\beta_j^{(l)}$ (the $l$-th element of $\bm{\beta}_j$) in position
+$(j, l)$ for each $T_l \in A_j$:
+
+$$
+T_{s,\,jl} = \begin{cases}
+  1 & l = j \\
+  -\beta_j^{(l)} & T_l \in A_j \\
+  0 & \text{otherwise}
+\end{cases}
+$$
+
+The **transformed G-matrix** is then:
+
+$$
+\bm{T}_G = \bm{T}\,\bm{G}\,\bm{T}^\top
+$$
+
+where $\bm{T}$ is the full $ks \times ks$ matrix covering all sites.  The
+structure of $\bm{T}_G$ depends on the conditioning scheme, as detailed below.
+
+\newpage
+
+# The Four Conditioning Schemes
+
+## Baseline (`type = "baseline"`)
+
+Every non-first treatment $T_j$ ($j = 2,\ldots,k$) is conditioned on the
+**first treatment $T_1$ alone**:
+
+$$
+A_j = \{T_1\}, \quad j = 2,\ldots,k
+$$
+
+The regression coefficients reduce to scalars $\beta_j = G_{j1}/G_{11}$ and
+the transformation matrix is **sparse** --- only the first column of each
+site block carries non-trivial entries:
+
+$$
+\bm{T}_s^{\text{base}} =
+\begin{pmatrix}
+  1        & 0 & 0 & \cdots & 0 \\
+  -\beta_2 & 1 & 0 & \cdots & 0 \\
+  -\beta_3 & 0 & 1 & \cdots & 0 \\
+  \vdots   &   &   & \ddots & \vdots \\
+  -\beta_k & 0 & 0 & \cdots & 1
+\end{pmatrix}
+$$
+
+The within-site block of $\bm{T}_G$ is **block-diagonal**:
+
+$$
+\bm{T}_s^{\text{base}}\,\bm{G}_s\,(\bm{T}_s^{\text{base}})^\top =
+\begin{pmatrix} G_{11} & \bm{0}^\top \\ \bm{0} & \bm{\Sigma}_r \end{pmatrix}
+$$
+
+where $\bm{\Sigma}_r = \bm{G}_{22} - \bm{G}_{21}G_{11}^{-1}\bm{G}_{12}
+\in \mathbb{R}^{m \times m}$ is the joint conditional covariance among the
+$m = k-1$ non-baseline responsiveness BLUPs.  These are orthogonal to $T_1$
+but may be **correlated with each other** (non-zero off-diagonals of
+$\bm{\Sigma}_r$).
+
+## Sequential (`type = "sequential"`)
+
+Treatment $T_j$ is conditioned on **all preceding treatments**:
+
+$$
+A_j = \{T_1, T_2, \ldots, T_{j-1}\}, \quad j = 2,\ldots,k
+$$
+
+This is the **Gram--Schmidt orthogonalisation** of the variety BLUPs,
+equivalent to the $\bm{L}\bm{D}\bm{L}^\top$ Cholesky decomposition of
+$\bm{G}_s$.  The transformation matrix is **unit lower-triangular**:
+
+$$
+\bm{T}_s^{\text{seq}} =
+\begin{pmatrix}
+  1               & 0 & 0 & \cdots & 0 \\
+  -\beta_{2|1}    & 1 & 0 & \cdots & 0 \\
+  -\beta_{3|12}^{(1)} & -\beta_{3|12}^{(2)} & 1 & \cdots & 0 \\
+  \vdots  & \vdots & & \ddots & \vdots \\
+  -\beta_{k|\cdot}^{(1)} & -\beta_{k|\cdot}^{(2)} & \cdots & -\beta_{k|\cdot}^{(k-1)} & 1
+\end{pmatrix}
+$$
+
+The conditional variance for treatment $j$ is the **Schur complement**:
+
+$$
+\sigma_{j|1\ldots j-1}^2 = G_{jj} -
+\bm{G}_{j,1:j-1}\,\bm{G}_{1:j-1,\,1:j-1}^{-1}\,\bm{G}_{1:j-1,\,j}
+$$
+
+The key property: because $\bm{T}_s^{\text{seq}} = \bm{L}_s^{-1}$ where
+$\bm{G}_s = \bm{L}_s\,\bm{D}_s\,\bm{L}_s^\top$, the within-site block of
+$\bm{T}_G$ is **exactly diagonal**:
+
+$$
+\bm{T}_s^{\text{seq}}\,\bm{G}_s\,(\bm{T}_s^{\text{seq}})^\top =
+\bm{D}_s = \operatorname{diag}\!\left(
+  G_{11},\;\sigma_{2|1}^2,\;\sigma_{3|12}^2,\;\ldots,\;\sigma_{k|1\ldots k-1}^2
+\right)
+$$
+
+All $k$ components --- efficiency and all $k-1$ responsiveness BLUPs --- are
+**mutually orthogonal**.  The treatment ordering in `levs` defines the
+hierarchy and should reflect a meaningful agronomic sequence (e.g.\ control
+$\to$ low $\to$ medium $\to$ high input).
+
+## Partial (`type = "partial"`)
+
+Each treatment $T_j$ is conditioned on **all other treatments simultaneously**:
+
+$$
+A_j = \{T_1,\ldots,T_k\} \setminus \{T_j\}, \quad j = 1,\ldots,k
+$$
+
+The regression coefficients are:
+
+$$
+\bm{\beta}_j = \bm{G}_{A_j,A_j}^{-1}\,\bm{G}_{A_j,j} \;\in\; \mathbb{R}^{k-1}
+$$
+
+and the conditional variance $\sigma_{j|\text{rest}}^2$ is the partial genetic
+variance of $T_j$ after removing the linear effects of all other treatments.
+All $k$ treatments receive a responsiveness BLUP; no treatment is unconditional.
+
+The transformation matrix $\bm{T}_s^{\text{part}}$ is **dense** (non-trivial
+entries throughout), and $\bm{T}_G$ is generally not diagonal.  However,
+the diagonal entries of the within-site block still equal the partial
+conditional variances:
+
+$$
+\left[\bm{T}_s^{\text{part}}\,\bm{G}_s\,(\bm{T}_s^{\text{part}})^\top\right]_{jj}
+= \sigma_{j|\text{rest}}^2
+$$
+
+The responsiveness BLUP $\tilde{u}_{ij}$ under `"partial"` measures the
+**unique genetic contribution** of treatment $j$ to variety $i$'s performance,
+net of all other treatments.  Note that the responsiveness BLUPs from
+different treatments are generally **not** mutually orthogonal.
+
+## Custom (`type = "custom"`)
+
+The user specifies the conditioning set for each treatment explicitly via the
+`cond` argument --- a named list where each element is either `NULL`
+(unconditional) or a character vector of treatment names:
+
+```r
+cond = list(
+  T0 = NULL,             # T0 unconditional (efficiency)
+  T1 = "T0",            # T1 | T0   (same as baseline for T1)
+  T2 = c("T0", "T1")    # T2 | {T0, T1}  (same as sequential for T2)
+)
+```
+
+Any subset structure is valid provided no treatment conditions on itself.
+The `"custom"` type subsumes all other types as special cases and allows
+asymmetric structures (e.g.\ T2 conditioned on both T0 and T1, while T1 is
+conditioned on T0 only).
+
+\newpage
+
+# Prediction Error Variance
+
+## General PEV Formula for Any Conditioning Set
+
+For treatment $j$ with conditioning set $A_j$ of size $a = |A_j|$, the
+responsiveness BLUP is the linear combination:
+
+$$
+\hat{\tilde{u}}_j = \hat{u}_j - \bm{\beta}_j^\top\,\hat{\bm{u}}_{A_j}
+= \bm{c}^\top \hat{\bm{u}}_{\{j\} \cup A_j}
+\qquad \text{where} \qquad
+\bm{c} = \begin{pmatrix} 1 \\ -\bm{\beta}_j \end{pmatrix} \in \mathbb{R}^{1+a}
+$$
+
+Applying to the $n$ varieties simultaneously via the block-Kronecker operator:
+
+$$
+\text{PEV}(\hat{\tilde{\bm{u}}}_j) =
+(\bm{c}^\top \otimes \bm{I}_n)\;
+\bm{V}_{\{j\} \cup A_j}\;
+(\bm{c} \otimes \bm{I}_n)
+$$
+
+where $\bm{V}_{\{j\} \cup A_j}$ is the $n(1+a) \times n(1+a)$ PEV sub-matrix
+from `predict(..., vcov = TRUE)$vcov`, arranged in blocks:
+
+$$
+\bm{V}_{\{j\} \cup A_j} =
+\begin{pmatrix}
+  \bm{C}_{jj}       & \bm{B}_{j,1} & \cdots & \bm{B}_{j,a} \\
+  \bm{B}_{j,1}^\top & \bm{C}_{11}  & \cdots & \bm{C}_{1a}  \\
+  \vdots             & \vdots       & \ddots & \vdots       \\
+  \bm{B}_{j,a}^\top & \bm{C}_{a1}  & \cdots & \bm{C}_{aa}
+\end{pmatrix}
+$$
+
+Expanding the Kronecker product without constructing it explicitly:
+
+$$
+\boxed{
+\text{PEV}(\hat{\tilde{\bm{u}}}_j)
+= \sum_{p=0}^{a}\sum_{q=0}^{a} c_p\,c_q\,\bm{V}_{pq}
+}
+$$
+
+where $c_0 = 1$, $c_l = -\beta_j^{(l)}$ for $l = 1,\ldots,a$, and $\bm{V}_{pq}$
+is the $n \times n$ block at position $(p,q)$ in $\bm{V}_{\{j\} \cup A_j}$.
+This double summation over $O(a^2)$ terms, each an $O(n^2)$ matrix operation,
+avoids constructing the full $n(1+a) \times n(1+a)$ Kronecker product.
+
+For $a = 1$ (baseline scheme) the formula reduces to the familiar:
+$$
+\text{PEV}(\hat{\tilde{u}}_j) = \bm{C}_{jj} - \beta_j(\bm{B}_{j,1} + \bm{B}_{j,1}^\top) + \beta_j^2\,\bm{C}_{11}
+$$
+
+## Posterior Variance
+
+The **posterior variance** of the responsiveness BLUP measures information
+gained from the data:
+
+$$
+\operatorname{Var}(\tilde{u}_j \mid \bm{y}) = \sigma_{j|A_j}^2 - \text{PEV}(\hat{\tilde{u}}_j)
+$$
+
+## Tukey's HSD for Variety Comparisons
+
+The $n \times n$ matrix of squared standard errors of difference is:
+
+$$
+\bm{S}_j = \bm{d}_j\bm{1}_n^\top + \bm{1}_n\bm{d}_j^\top - 2\,\text{PEV}(\hat{\tilde{\bm{u}}}_j)
+$$
+
+where $\bm{d}_j = \operatorname{diag}\!\left(\text{PEV}(\hat{\tilde{\bm{u}}}_j)\right)$.
+Tukey's HSD at the 5\% level is:
+
+$$
+\text{HSD}_j = \frac{\overline{\text{SED}}_j}{\sqrt{2}} \times q_{0.95}(n,\,n-2)
+$$
+
+where $\overline{\text{SED}}_j$ is the average of the lower-triangular entries
+of $\bm{S}_j^{1/2}$ and $q_{0.95}(n,\nu)$ is the Studentised range critical
+value.
+
+\newpage
+
+# Site-Varying Regression Coefficients and GxExT Interaction
+
+In a multi-environment trial the regression coefficients $\bm{\beta}_j^{(s)}$
+are estimated from the site-specific sub-matrix of $\bm{G}$ and therefore
+vary across sites.  This variation is the genetic basis of the
+Treatment $\times$ Genotype $\times$ Environment (GxExT) interaction.
+
+The function returns `beta` as a **named list** of $n_s \times |A_j|$ matrices,
+one per conditioned treatment:
+
+```
+beta[["T1"]]   # n_s x 1 matrix (baseline scheme: T1 | T0)
+beta[["T2"]]   # n_s x 2 matrix (sequential scheme: T2 | {T0,T1})
+```
+
+Each row gives the site-specific regression vector $\bm{\beta}_j^{(s)}$,
+allowing inspection of how the genetic regression changes across environments.
+
+The scalar conditional variances $\sigma_{j|A_j}^{2(s)}$ are returned in
+`sigmat` as an $n_s \times n_{\text{cond}}$ matrix (sites $\times$ conditioned
+treatments).  A large $\sigma_{j|A_j}^{2(s)}$ relative to $G_{jj}^{(s)}$
+indicates that treatment $j$ carries independent genetic information at site
+$s$ beyond what is predicted by its conditioning set --- providing scope for
+independent selection on responsiveness.
+
+\newpage
+
+# Implementation Notes
+
+## Function Signature
+
+```r
+randomRegress(model, Env   = "TSite:Variety",
+                       levs  = NULL,
+                       type  = "baseline",
+                       cond  = NULL,
+                       sep   = "-",
+                       pev   = TRUE, ...)
+```
+
+## Algorithm
+
+\begin{enumerate}
+  \item \textbf{Build conditioning structure.}  The helper \texttt{.condList()}
+        maps \texttt{type} (and \texttt{cond} for custom) to a named list
+        \texttt{cond\_list} where \texttt{cond\_list[[j]]} is \texttt{NULL}
+        (unconditional) or a character vector of conditioning treatment names.
+  \item \textbf{Extract BLUPs and G-matrix.}  For FA models use
+        \texttt{fa.asreml()}; for all other structures use
+        \texttt{predict(..., vcov = TRUE)}.
+  \item \textbf{Parse TSite labels.}  Split G-matrix column names on \texttt{sep}
+        to recover the treatment and site sub-labels for each TSite level.
+  \item \textbf{Main loop} (one iteration per site $s_i$):
+    \begin{enumerate}
+      \item For each conditioned treatment $T_j$ with conditioning set $A_j$:
+        \begin{enumerate}
+          \item Extract G sub-blocks $G_{jj}$, $\bm{G}_{j,A_j}$,
+                $\bm{G}_{A_j,A_j}$, $\bm{G}_{A_j,j}$.
+          \item Compute $\bm{\beta}_j = \bm{G}_{A_j,A_j}^{-1}\bm{G}_{A_j,j}$
+                (scalar division when $|A_j| = 1$; \texttt{solve()} otherwise).
+          \item Compute $\sigma_{j|A_j}^2 = G_{jj} - \bm{G}_{j,A_j}\bm{\beta}_j$.
+          \item Insert $-\bm{\beta}_j$ into transformation matrix $\bm{T}$.
+          \item Compute responsiveness BLUPs:
+                $\tilde{\bm{u}}_{j} = \bm{u}_{j} - \bm{U}_{A_j}\bm{\beta}_j$.
+          \item (Non-FA only) Compute $\text{PEV}(\hat{\tilde{\bm{u}}}_j)$
+                via the double-sum block formula and derive Tukey HSD.
+        \end{enumerate}
+    \end{enumerate}
+  \item \textbf{Compute} $\bm{T}_G = \bm{T}\bm{G}\bm{T}^\top$ and label
+        unconditional treatments \texttt{eff.<lev>}, conditioned treatments
+        \texttt{resp.<lev>}.
+\end{enumerate}
+
+## Return Values
+
+| Element | Type | Description |
+|:--------|:-----|:------------|
+| `blups` | data frame | Site, Variety, raw BLUPs, `resp.<lev>`, `HSD.<lev>` |
+| `TGmat` | matrix | $\bm{T}\bm{G}\bm{T}^\top$; diagonal for `"sequential"` |
+| `Gmat` | matrix | Original G-matrix |
+| `beta` | named list | `beta[["Tj"]]` is $n_s \times |A_j|$ matrix of $\bm{\beta}_j^{(s)}$ |
+| `sigmat` | matrix | $n_s \times n_{\text{cond}}$ scalar conditional variances |
+| `tmat` | matrix | Full transformation matrix $\bm{T}$ |
+| `cond_list` | list | Resolved conditioning structure |
+| `type` | character | Scheme used |
+
+## Variance Structure Recommendations
+
+| $k$ | $s$ | $ks$ | `us()` params | `fa(·,2)` params | Recommended |
+|:---:|:---:|:----:|:-------------:|:----------------:|:-----------:|
+| 2 | 5 | 10 | 55 | 40 | `corgh()` |
+| 3 | 10 | 30 | 465 | 90 | `fa(TSite,2)` |
+| 4 | 10 | 40 | 820 | 120 | `fa(TSite,2)` |
+| 5 | 12 | 60 | 1830 | 180 | `fa(TSite,3)` |
+
+HSD values are `NA` for FA models as `fa.asreml()` does not return the full
+prediction error covariance matrix.
+
+\newpage
+
+# Worked Numerical Example
+
+## Setup
+
+A single site with three treatments ($k = 3$) and G-matrix:
+
+$$
+\bm{G} =
+\begin{pmatrix}
+  9.00  & 8.10  & 13.50 \\
+  8.10  & 12.25 & 14.00 \\
+  13.50 & 14.00 & 36.00
+\end{pmatrix}
+\quad \text{(treatments T0, T1, T2)}
+$$
+
+The same $\bm{G}$ is used to illustrate all four schemes.
+
+## Scheme 1: Baseline (`type = "baseline"`)
+
+T1 and T2 are each conditioned on T0 alone.
+
+**For T1 $\mid$ T0:**
+$$
+\beta_1 = \frac{G_{10}}{G_{00}} = \frac{8.10}{9.00} = 0.900, \qquad
+\sigma_{1|0}^2 = G_{11} - \frac{G_{10}^2}{G_{00}} = 12.25 - 7.29 = 4.96
+$$
+
+**For T2 $\mid$ T0:**
+$$
+\beta_2 = \frac{G_{20}}{G_{00}} = \frac{13.50}{9.00} = 1.500, \qquad
+\sigma_{2|0}^2 = G_{22} - \frac{G_{20}^2}{G_{00}} = 36.00 - 20.25 = 15.75
+$$
+
+**Transformation matrix and $\bm{T}_G$:**
+$$
+\bm{T}^{\text{base}} =
+\begin{pmatrix} 1 & 0 & 0 \\ -0.900 & 1 & 0 \\ -1.500 & 0 & 1 \end{pmatrix},
+\qquad
+\bm{T}^{\text{base}}\bm{G}(\bm{T}^{\text{base}})^\top =
+\begin{pmatrix}
+  9.00 & 0    & 0     \\
+  0    & 4.96 & 1.85  \\
+  0    & 1.85 & 15.75
+\end{pmatrix}
+$$
+
+The $2 \times 2$ lower block $\bm{\Sigma}_r$ has off-diagonal 1.85, confirming
+that the two responsiveness BLUPs are correlated ($\rho \approx 0.21$).
+
+## Scheme 2: Sequential (`type = "sequential"`)
+
+T1 is conditioned on T0; T2 is conditioned on **both** T0 and T1.
+
+**For T1 $\mid$ T0:** same as baseline: $\beta_{1|0} = 0.900$,
+$\sigma_{1|0}^2 = 4.96$.
+
+**For T2 $\mid$ \{T0, T1\}:**
+$$
+\bm{G}_{A,A} = \begin{pmatrix} 9.00 & 8.10 \\ 8.10 & 12.25 \end{pmatrix},
+\qquad
+\bm{G}_{A,2} = \begin{pmatrix} 13.50 \\ 14.00 \end{pmatrix}
+$$
+$$
+\det(\bm{G}_{A,A}) = 9.00 \times 12.25 - 8.10^2 = 44.64
+$$
+$$
+\bm{\beta}_{2|\{0,1\}} =
+\bm{G}_{A,A}^{-1}\bm{G}_{A,2} =
+\frac{1}{44.64}
+\begin{pmatrix} 12.25 & -8.10 \\ -8.10 & 9.00 \end{pmatrix}
+\begin{pmatrix} 13.50 \\ 14.00 \end{pmatrix}
+=
+\begin{pmatrix} 1.164 \\ 0.373 \end{pmatrix}
+$$
+$$
+\sigma_{2|\{0,1\}}^2 = 36.00 -
+\begin{pmatrix} 13.50 & 14.00 \end{pmatrix}
+\begin{pmatrix} 1.164 \\ 0.373 \end{pmatrix}
+= 36.00 - (15.72 + 5.22) = 15.06
+$$
+
+**Transformation matrix and $\bm{T}_G$:**
+$$
+\bm{T}^{\text{seq}} =
+\begin{pmatrix} 1 & 0 & 0 \\ -0.900 & 1 & 0 \\ -1.164 & -0.373 & 1 \end{pmatrix},
+\qquad
+\bm{T}^{\text{seq}}\bm{G}(\bm{T}^{\text{seq}})^\top =
+\begin{pmatrix}
+  9.00 & 0    & 0     \\
+  0    & 4.96 & 0     \\
+  0    & 0    & 15.06
+\end{pmatrix}
+$$
+
+$\bm{T}_G$ is exactly diagonal: all three components are **mutually orthogonal**.
+The residual covariance of 1.85 present in the baseline scheme has been
+eliminated by additionally conditioning T2 on T1.
+
+## Scheme 3: Partial (`type = "partial"`)
+
+Each treatment is conditioned on both other treatments.
+
+**For T0 $\mid$ \{T1, T2\}:**
+$$
+\bm{G}_{A,A} = \begin{pmatrix} 12.25 & 14.00 \\ 14.00 & 36.00 \end{pmatrix},
+\quad \det = 245.0, \quad
+\bm{\beta}_{0|\{1,2\}} =
+\begin{pmatrix} 0.419 \\ 0.212 \end{pmatrix}
+$$
+$$
+\sigma_{0|\{1,2\}}^2 = 9.00 - (8.10 \times 0.419 + 13.50 \times 0.212) = 9.00 - 6.26 = 2.74
+$$
+
+**For T1 $\mid$ \{T0, T2\}:**
+$$
+\bm{G}_{A,A} = \begin{pmatrix} 9.00 & 13.50 \\ 13.50 & 36.00 \end{pmatrix},
+\quad \det = 141.75, \quad
+\bm{\beta}_{1|\{0,2\}} =
+\begin{pmatrix} 0.724 \\ 0.117 \end{pmatrix}
+$$
+$$
+\sigma_{1|\{0,2\}}^2 = 12.25 - (8.10 \times 0.724 + 14.00 \times 0.117) = 12.25 - 7.51 = 4.74
+$$
+
+**For T2 $\mid$ \{T0, T1\}:** same conditioning set as the sequential T2
+step above: $\bm{\beta}_{2|\{0,1\}} = (1.164,\; 0.373)^\top$,
+$\sigma_{2|\{0,1\}}^2 = 15.06$.
+
+**Summary of conditional variances across all three schemes:**
+
+| Scheme | $\sigma_{T0}^2$ | $\sigma_{T1}^2$ | $\sigma_{T2}^2$ | $\bm{T}_G$ structure |
+|:-------|:---------------:|:---------------:|:---------------:|:---------------------|
+| Baseline | --- | 4.96 | 15.75 | Block-diagonal |
+| Sequential | --- | 4.96 | 15.06 | **Diagonal** |
+| Partial | 2.74 | 4.74 | 15.06 | Dense (diag = cond. vars) |
+
+Note that $\sigma_{T2}^2$ differs between baseline (15.75) and
+sequential/partial (15.06) because the sequential and partial schemes remove
+the additional shared variance between T1 and T2 that the baseline scheme
+leaves behind.
+
+## Scheme 4: Custom (`type = "custom"`)
+
+The custom scheme reproduces any of the above or any user-defined hybrid.  For
+example, conditioning T1 on T0 and T2 on both T0 and T1 (identical to
+sequential in this case):
+
+```r
+cond = list(T0 = NULL, T1 = "T0", T2 = c("T0", "T1"))
+```
+
+yields the same $\bm{T}^{\text{seq}}$ and diagonal $\bm{T}_G$ as Scheme 2.
+
+\newpage
+
+# Summary
+
+The `randomRegress()` function implements a general framework for decomposing
+variety BLUPs in multi-treatment, multi-environment plant breeding trials.  The
+foundation is the **universal conditional normal formula**: for any treatment
+$T_j$ and any conditioning set $A_j$,
+
+$$
+\bm{\beta}_j = \bm{G}_{A_j,A_j}^{-1}\,\bm{G}_{A_j,j}, \qquad
+\tilde{u}_{ij} = u_{ij} - \bm{\beta}_j^\top\,\bm{u}_{i,A_j}
+$$
+
+The four built-in schemes --- `"baseline"`, `"sequential"`, `"partial"`, and
+`"custom"` --- provide a spectrum of decompositions:
+
+\begin{itemize}
+  \item \textbf{Baseline}: simple, interpretable, efficiency orthogonal to
+        all responsiveness BLUPs but responsiveness BLUPs may be mutually
+        correlated.
+  \item \textbf{Sequential}: fully orthogonal components via the Cholesky
+        decomposition; $\bm{T}_G$ is diagonal; treatment ordering defines
+        the hierarchy.
+  \item \textbf{Partial}: each treatment's unique genetic contribution net of
+        all others; useful when no single baseline is natural.
+  \item \textbf{Custom}: full flexibility for asymmetric or domain-driven
+        conditioning structures.
+\end{itemize}
+
+Site-specific regression vectors $\bm{\beta}_j^{(s)}$ and conditional variances
+$\sigma_{j|A_j}^{2(s)}$ are returned in `beta` (named list of
+$n_s \times |A_j|$ matrices) and `sigmat` ($n_s \times n_{\text{cond}}$ matrix),
+providing direct insight into Treatment $\times$ Genotype $\times$ Environment
+interaction.
+
+\bigskip
+\noindent\rule{\textwidth}{0.4pt}
+\begin{center}
+\textit{BioMaid R package} \quad|\quad
+\texttt{randomRegress()} \quad|\quad
+\textit{`r format(Sys.Date(), "%Y")`}
+\end{center}

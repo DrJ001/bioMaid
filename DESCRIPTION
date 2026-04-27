@@ -27,5 +27,9 @@ Suggests:
     testthat (>= 3.1.2),
     devtools,
     covr,
-    xml2
+    xml2,
+    plotly,
+    jsonlite,
+    htmlwidgets,
+    knitr
 Config/testthat/edition: 3

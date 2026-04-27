@@ -1,0 +1,600 @@
+---
+title: "Multiple Comparison Criteria for Predicted Values"
+subtitle: "`compare()` and `plot_compare()`"
+author: "biomAid package"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: false
+    smooth-scroll: true
+    embed-resources: true
+    theme: litera
+    css: custom.css
+    highlight-style: github
+    code-fold: false
+    fig-width: 8
+    fig-height: 5
+    fig-dpi: 150
+    html-math-method: katex
+execute:
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(biomAid)
+library(ggplot2)
+library(asreml)
+```
+
+---
+
+## Overview
+
+`compare()` computes a pairwise comparison criterion — **HSD**, **LSD**, or
+**Bonferroni-corrected LSD** — for predicted values obtained from an ASReml-R
+V4 model.  The criterion is a single number: two predicted values in the same
+group are declared significantly different if and only if their absolute
+difference exceeds it.
+
+Three comparison types are available:
+
+| Type | Formula | Multiple-testing control | Best used when |
+|------|---------|--------------------------|----------------|
+| `"HSD"` (Tukey) | $\frac{\overline{\text{SED}}}{\sqrt{2}} \times q_{1-\alpha}(n_g, \nu)$ | Family-wise (exact for balanced designs) | Routine variety/treatment comparisons |
+| `"LSD"` | $\overline{\text{SED}} \times t_{\alpha/2,\,\nu}$ | None | Exploratory or preplanned single comparisons |
+| `"Bonferroni"` | $\overline{\text{SED}} \times t_{\alpha/(2m),\,\nu}$ | Family-wise (conservative) | Small number of specific comparisons |
+
+The companion function `plot_compare()` turns a `compare()` result directly
+into publication-ready visualisations: a sorted **dot plot** with a
+criterion-width band, a **compact letter display** (CLD), or a
+**pairwise significance heatmap**.
+
+---
+
+## Mathematical Framework
+
+### Prediction error variance and the average SED
+
+Let $\hat{\boldsymbol{\tau}}_g = (\hat{\tau}_{1g}, \ldots, \hat{\tau}_{n_g g})^\top$
+be the vector of $n_g$ predicted values in group $g$, with prediction error
+variance–covariance matrix
+
+$$
+\mathbf{V}_g = \operatorname{Var}(\hat{\boldsymbol{\tau}}_g - \boldsymbol{\tau}_g),
+$$
+
+returned by `predict(model, classify = term, vcov = TRUE)$vcov` in ASReml-R V4.
+
+The standard error of a difference (SED) for the pair $(i, j)$ is
+
+$$
+\text{SED}_{ij} = \sqrt{V_{ii} + V_{jj} - 2V_{ij}}.
+$$
+
+`compare()` uses the **arithmetic mean SED** across all $m = \binom{n_g}{2}$
+pairs as the representative spread of prediction error:
+
+$$
+\overline{\text{SED}}_g
+  = \frac{1}{m}\sum_{i < j} \text{SED}_{ij}.
+$$
+
+Using the average SED (rather than a single representative pair) is robust when
+PEVs vary across units — as they do in unbalanced designs and spatial models.
+
+---
+
+### Comparison criteria
+
+Let $\nu = \texttt{model\$nedf}$ be the error degrees of freedom.
+
+**Tukey HSD** — controls the family-wise error rate (FWER) exactly for
+balanced designs by referring to the Studentised range distribution:
+
+$$
+\text{HSD}_g
+  = \frac{\overline{\text{SED}}_g}{\sqrt{2}} \times
+    q_{1-\alpha}(n_g, \nu),
+$$
+
+where $q_{1-\alpha}(n_g, \nu)$ is the upper $\alpha$ critical value of the
+Studentised range with $n_g$ means and $\nu$ degrees of freedom.
+
+**LSD** — no multiplicity correction; equivalent to a two-sided $t$-test at
+level $\alpha$ for each pair:
+
+$$
+\text{LSD}_g = \overline{\text{SED}}_g \times t_{\alpha/2,\,\nu}.
+$$
+
+**Bonferroni** — applies the Bonferroni correction across all $m$ pairs,
+controlling the FWER conservatively:
+
+$$
+\text{Bonferroni}_g
+  = \overline{\text{SED}}_g \times t_{\alpha / (2m),\,\nu}.
+$$
+
+For all three types: $|\hat{\tau}_i - \hat{\tau}_j| > \text{criterion}$
+declares pair $(i, j)$ significantly different.
+
+---
+
+### Posterior variance (`pev = FALSE`)
+
+When `term` is in the **random** part of the model, the PEV
+$\mathbf{V}_{\hat{\boldsymbol{\tau}}}$ underestimates the uncertainty of the
+difference between BLUPs.  Setting `pev = FALSE` substitutes the **posterior
+variance**
+
+$$
+\operatorname{Var}(\hat{\boldsymbol{\tau}} \mid \mathbf{y})
+  = \mathbf{G} - \mathbf{V}_{\hat{\boldsymbol{\tau}}}
+$$
+
+which accounts for the shrinkage in BLUP estimation and gives a more
+appropriate measure of uncertainty for genotypic BLUPs.
+
+---
+
+## Setup
+
+### Simulated data and model
+
+> **Requires:** ASReml-R V4. The vignette is pre-rendered so no licence is
+> needed to read it; run the code chunks only if you have ASReml-R installed.
+
+We use `simTrialData()` to generate a balanced multi-environment trial with
+20 varieties, 4 sites, and 3 nitrogen treatments (T0, T1, T2).
+
+```{r simulate}
+#| cache: true
+out <- simTrialData(
+  nvar          = 20L,
+  nsite         = 4L,
+  treatments    = c("T0", "T1", "T2"),
+  treat_effects = c(0, 80, 200),
+  nrep          = 3L,
+  seed          = 42L,
+  verbose       = FALSE
+)
+dat        <- out$data
+dat$Row    <- factor(dat$Row)
+dat$Column <- factor(dat$Column)
+```
+
+We fit a **fixed `Treatment × Site × Variety` model** with
+site-within-replicate random effects and a spatial residual structure.
+Variety must be in the fixed effects so that `predict()` returns BLUEs for
+every Variety × Site combination — the basis for the comparison criteria.
+
+```{r fit_model}
+#| cache: true
+#| results: hide
+asreml.options(trace = FALSE)
+model <- asreml(
+  yield    ~ Treatment * Site * Variety,
+  random   = ~ at(Site):Rep,
+  residual = ~ dsum(~ ar1(Row):ar1(Column) | Site),
+  data     = dat,
+  maxit    = 30L
+)
+model <- update(model)
+```
+
+---
+
+## Example 1: HSD — single global group
+
+The simplest use: compare all variety BLUEs across the trial in a single
+global group (no `by` argument).  `compare()` calls `predict()` internally
+using `term` as the `classify`.
+
+```{r hsd_single}
+res1 <- compare(
+  model,
+  term = "Variety",
+  type = "HSD"
+)
+
+head(res1[order(res1$predicted.value, decreasing = TRUE), ])
+```
+
+The `HSD` column is **constant within the group** — all predicted values share
+the same criterion.  Two varieties are significantly different if
+`|pred_i - pred_j| > HSD`.  The `avsed` column records the average SED on
+which the criterion is based.
+
+Applying the criterion manually:
+
+```{r hsd_single_apply}
+# Are Var01 and Var20 significantly different?
+preds <- setNames(res1$predicted.value, as.character(res1$Variety))
+diff  <- abs(preds["Var01"] - preds["Var20"])
+cat("|Var01 - Var20| =", round(diff, 1L),
+    "  HSD =",           round(res1$HSD[1L], 1L),
+    "  Significant:",    diff > res1$HSD[1L], "\n")
+```
+
+---
+
+## Example 2: HSD by site
+
+Adding `by = "Site"` performs independent comparisons within each site, using
+each site's own prediction error variance matrix and thus its own criterion.
+This is the most common usage: **20 varieties compared within each of 4 sites**.
+
+```{r hsd_by_site}
+#| cache: true
+res_hsd <- compare(
+  model,
+  term = "Variety:Site",
+  by   = "Site",
+  type = "HSD"
+)
+
+# HSD varies by site (different PEV per site from the spatial model)
+unique(res_hsd[, c("Site", "HSD", "avsed")])
+```
+
+The HSD differs between sites because the spatial AR1×AR1 residual structure
+gives each site its own effective error variance.  Sites with tighter spatial
+control (lower `avsed`) have a smaller, more powerful criterion.
+
+---
+
+## Example 3: Multi-factor `by`
+
+When predictions span multiple factors, `by` accepts a character vector.
+Here varieties are compared **within every Site × Treatment combination** —
+asking "which varieties perform best under each treatment at each site?".
+The colon-string form `"Site:Treatment"` is equivalent to the vector form.
+
+```{r hsd_multi_by}
+#| cache: true
+# Compare varieties within each Site × Treatment combination
+res3a <- compare(model, term = "Variety:Site:Treatment",
+                 by = c("Site", "Treatment"), type = "HSD")
+res3b <- compare(model, term = "Variety:Site:Treatment",
+                 by = "Site:Treatment", type = "HSD")
+
+# HSD per Site × Treatment group (first 6 of 12 groups)
+unique(res3a[, c("Site", "Treatment", "HSD", "avsed")])[1:6, ]
+```
+
+The criterion varies across Site × Treatment combinations because each
+sub-environment has its own spatial error structure.
+
+---
+
+## Example 4: LSD and Bonferroni
+
+The three criteria differ only in the multiplier applied to `avsed`.
+LSD is the most liberal (no correction); Bonferroni is the most conservative;
+HSD sits between them for most group sizes.
+
+```{r three_criteria}
+#| cache: true
+res_lsd <- compare(model, term = "Variety:Site", by = "Site", type = "LSD")
+res_bon <- compare(model, term = "Variety:Site", by = "Site",
+                   type = "Bonferroni")
+
+# Criteria for Env1 (res_hsd already computed in Example 2)
+env1 <- function(r, col) round(unique(r[[col]][r$Site == "Env1"]), 1L)
+cat("Env1 criteria (20 varieties):\n")
+cat("  LSD        =", env1(res_lsd, "LSD"),        "\n")
+cat("  HSD        =", env1(res_hsd, "HSD"),        "\n")
+cat("  Bonferroni =", env1(res_bon, "Bonferroni"), "\n")
+```
+
+For 20 varieties, $m = \binom{20}{2} = 190$ pairs.  The Bonferroni correction
+is very conservative at this scale — HSD is generally preferred for large
+variety trials.
+
+---
+
+## Example 5: Variety BLUPs with `pev = FALSE`
+
+When variety is in the **random** effects the PEV understates uncertainty
+because it ignores the shrinkage towards zero inherent in BLUP estimation.
+Setting `pev = FALSE` substitutes the posterior variance
+$\mathbf{G} - \mathbf{PEV}$, giving a more appropriate — and larger — criterion.
+
+We refit the model with **Variety in the random effects** and
+`Treatment × Site` fixed, so `predict()` returns BLUPs rather than BLUEs.
+
+```{r pev_false}
+#| cache: true
+#| results: hide
+model_rnd <- asreml(
+  yield    ~ Treatment * Site,
+  random   = ~ Variety + at(Site):Rep,
+  residual = ~ dsum(~ ar1(Row):ar1(Column) | Site),
+  data     = dat,
+  maxit    = 30L
+)
+model_rnd <- update(model_rnd)
+```
+
+```{r pev_false_compare}
+res_pev  <- compare(model_rnd, term = "Variety", type = "HSD", pev = TRUE)
+res_post <- compare(model_rnd, term = "Variety", type = "HSD", pev = FALSE)
+
+cat("HSD (PEV):                    ", round(res_pev$HSD[1L],  1L), "\n")
+cat("HSD (posterior variance):     ", round(res_post$HSD[1L], 1L), "\n")
+cat("Ratio (posterior / PEV HSD):  ",
+    round(res_post$HSD[1L] / res_pev$HSD[1L], 2L), "\n")
+```
+
+The posterior-variance HSD is larger than the PEV-based HSD, reflecting the
+additional uncertainty that BLUP shrinkage introduces.  Using `pev = TRUE`
+on a random-effects term underestimates the true uncertainty of a difference
+between BLUPs and will declare too many pairs significant.
+
+> **Note:** `pev = FALSE` is only meaningful when `term` is in the **random**
+> part of the model.  When the term is fixed (as in Examples 1–4 above),
+> `pev = TRUE` (the default) is always correct.
+
+---
+
+## Example 6: Adjusting `alpha`
+
+A stricter significance level widens the criterion, reducing the number of
+significant pairs.
+
+```{r alpha_adjust}
+#| cache: true
+r_05 <- compare(model, term = "Variety:Site", by = "Site",
+                type = "HSD", alpha = 0.05)
+r_01 <- compare(model, term = "Variety:Site", by = "Site",
+                type = "HSD", alpha = 0.01)
+
+env1_05 <- unique(r_05$HSD[r_05$Site == "Env1"])
+env1_01 <- unique(r_01$HSD[r_01$Site == "Env1"])
+cat("Env1  alpha=0.05 HSD:", round(env1_05, 1L), "\n")
+cat("Env1  alpha=0.01 HSD:", round(env1_01, 1L), "\n")
+```
+
+---
+
+## Visualisation with `plot_compare()`
+
+`plot_compare()` reads the `compare()` result directly and infers the grouping
+structure automatically — no extra arguments are needed to handle `by` groups.
+
+### Dot plot — `type = "dotplot"`
+
+Varieties are sorted by predicted value, highest at the top.  A **shaded band**
+of width equal to the HSD is drawn below the top-ranked variety.  Any variety
+within the band is not significantly different from the best; those outside
+(coloured red) are.  The dashed vertical line marks the top-ranked predicted
+value.
+
+```{r dotplot_single}
+#| fig-height: 7
+p1 <- plot_compare(res_hsd |> subset(Site == "Env1"), type = "dotplot") +
+  ggtitle("Variety comparison — Env1 (HSD)")
+print(p1)
+```
+
+When a `by`-grouped result is passed, each group becomes its own facet panel
+with its own site-specific criterion band:
+
+```{r dotplot_grouped}
+#| fig-height: 7
+p2 <- plot_compare(res_hsd, type = "dotplot") +
+  ggtitle("Variety comparison by site (HSD)",
+          subtitle = "Band width = site-specific HSD")
+print(p2)
+```
+
+### Reference variety — `reference =`
+
+Setting `reference` centres the band on a named variety rather than the best.
+Points are coloured three ways: **green** (significantly better), **blue**
+(not significantly different), **red** (significantly worse).  The reference
+variety is shown as a filled diamond.
+
+This is the natural way to ask *"which varieties are significantly better or
+worse than our commercial check?"*
+
+```{r dotplot_reference}
+#| fig-height: 7
+# Use Var10 as the commercial check reference
+p3 <- plot_compare(res_hsd, type = "dotplot", reference = "Var10") +
+  ggtitle("Variety comparison — reference: Var10",
+          subtitle = "Green = sig. better | Blue = not sig. | Red = sig. worse")
+print(p3)
+```
+
+### Half-criterion error bars — `type = "errbar"`
+
+Each variety is shown as a point (its predicted value) with a horizontal line
+segment spanning $\hat{\tau} \pm \frac{1}{2}\text{HSD}$.  The visual
+significance rule is exact: **two varieties are significantly different if and
+only if their bars do not overlap**.  This is equivalent to the criterion test
+$|\hat{\tau}_i - \hat{\tau}_j| > \text{HSD}$.
+
+The error bar display is particularly useful when interest lies in all pairwise
+comparisons rather than just comparisons with the best variety — every
+non-overlapping pair stands out directly, not just those that fall outside a
+single band.
+
+```{r errbar_single}
+#| fig-height: 7
+p_eb1 <- plot_compare(res_hsd |> subset(Site == "Env1"), type = "errbar") +
+  ggtitle("Half-HSD error bars — Env1",
+          subtitle = "Non-overlapping bars = significant difference")
+print(p_eb1)
+```
+
+With a `by`-grouped result, each site gets its own panel.  Bar widths differ
+between sites because each site has its own spatial error variance and therefore
+its own HSD.
+
+```{r errbar_grouped}
+#| fig-height: 7
+p_eb2 <- plot_compare(res_hsd, type = "errbar") +
+  ggtitle("Half-HSD error bars by site",
+          subtitle = "Bar width = site-specific HSD/2")
+print(p_eb2)
+```
+
+The criterion type changes the bar width directly — LSD bars are shorter
+(more discriminating) and Bonferroni bars are wider (more conservative).  This
+makes the effect of the multiplicity correction immediately visible:
+
+```{r errbar_lsd}
+#| fig-height: 7
+p_eb3 <- plot_compare(res_lsd |> subset(Site == "Env1"), type = "errbar") +
+  ggtitle("Half-LSD error bars — Env1",
+          subtitle = "LSD bars are shorter than HSD bars — more pairs declared significant")
+print(p_eb3)
+```
+
+### Compact letter display — `type = "letters"`
+
+The compact letter display (CLD) is the standard reporting format in plant
+science.  Varieties sharing at least one letter are not significantly different.
+Letters are assigned by the descending sweep algorithm using the HSD as the
+significance threshold.
+
+```{r letters_single}
+#| fig-height: 7
+p4 <- plot_compare(res_hsd |> subset(Site == "Env1"), type = "letters") +
+  ggtitle("Compact letter display — Env1 (HSD)")
+print(p4)
+```
+
+With `by`-groups, each site gets its own panel with independent letter
+assignments:
+
+```{r letters_grouped}
+#| fig-height: 7
+p5 <- plot_compare(res_hsd, type = "letters") +
+  ggtitle("CLD — 20 varieties by site",
+          subtitle = "Letters are independent within each site")
+print(p5)
+```
+
+### Pairwise significance heatmap — `type = "heatmap"`
+
+The heatmap shows all $\binom{20}{2} = 190$ pairwise absolute differences as
+a colour-coded matrix.  A white cross (×) marks pairs that exceed the HSD
+criterion.  For 20+ varieties this reveals the full discrimination pattern at a
+glance — something no letter display can convey.
+
+```{r heatmap_variety}
+#| fig-height: 7
+#| fig-width: 10
+p6 <- plot_compare(res_hsd, type = "heatmap") +
+  ggtitle("Variety pairwise significance — 4 sites",
+          subtitle = "White × = significant at HSD level")
+print(p6)
+```
+
+### Interactive dotplot — `interactive = TRUE`
+
+Setting `interactive = TRUE` returns a `pc_interactive` object.  When printed,
+it renders an interactive **plotly** widget in the RStudio Viewer pane
+(not the Graphics pane).  You can still use `+` to add ggplot2 layers before
+the conversion.
+
+The dotplot has a special hover interaction: hovering over any variety
+**moves the criterion band** to be centred on that variety's predicted value
+and **recolours all points** relative to it (green = significantly better,
+blue = not significant, red = significantly worse).  Unhovering restores the
+original state.
+
+```{r interactive}
+#| eval: true
+# Single-site subset keeps the demo focused on the hover interaction
+as_plotly(plot_compare(res_hsd |> subset(Site == "Env1"),
+                       type = "dotplot", interactive = TRUE))
+```
+
+> **Note:** `interactive = TRUE` requires the **plotly** package
+> (`install.packages("plotly")`).  The widget is embedded directly in the
+> HTML document — hover over any variety point to move the criterion band
+> and recolour all points relative to it.
+>
+> **Multi-panel use:** pass the full `by`-grouped result to get one facet
+> per group.  `as_plotly()` automatically adjusts subplot spacing; set
+> `height` (pixels) if you need more room, e.g.
+> `as_plotly(plot_compare(res_hsd, ...), height = 700)`.
+
+### Extracting plot data — `return_data = TRUE`
+
+All three plot types support `return_data = TRUE`, which returns the tidy
+data frame used to build the plot:
+
+```{r return_data}
+df_dot <- plot_compare(res_hsd, type = "dotplot", return_data = TRUE)
+head(df_dot[, c("Group", "Variety", "pred", "crit", "rank", "sig")])
+```
+
+```{r return_data_heat}
+df_heat <- plot_compare(res_hsd |> subset(Site == "Env1"),
+                        type   = "heatmap",
+                        return_data = TRUE)
+head(df_heat[, c("Var_x", "Var_y", "diff", "sig")])
+```
+
+The ggplot object returned by `plot_compare()` can also be extended with `+`:
+
+```{r extend}
+#| fig-height: 7
+plot_compare(res_hsd, type = "letters") +
+  ggplot2::ggtitle("Tukey HSD — 20 varieties across 4 sites",
+                   subtitle = "alpha = 0.05 | Letters independent per site") +
+  ggplot2::xlab("Predicted yield (kg/ha)")
+```
+
+---
+
+## Summary
+
+### `compare()`
+
+| Task | Specification |
+|------|--------------|
+| HSD (Tukey) criterion | `type = "HSD"` (default) |
+| LSD (unadjusted) criterion | `type = "LSD"` |
+| Bonferroni criterion | `type = "Bonferroni"` |
+| One global group | `by = NULL` (default) |
+| Single factor by-group | `by = "Site"` |
+| Multi-factor by-group | `by = c("Site", "Treatment")` or `by = "Site:Treatment"` |
+| Stricter significance level | `alpha = 0.01` |
+| Use posterior variance for BLUPs | `pev = FALSE` |
+| Pass extra args to `predict()` | `...` (e.g. `present = ...`) |
+
+### `plot_compare()`
+
+| Task | Specification |
+|------|--------------|
+| Sorted dot plot with criterion band | `type = "dotplot"` (default) |
+| Half-criterion error bars (non-overlap = significant) | `type = "errbar"` |
+| Compact letter display | `type = "letters"` |
+| Pairwise significance heatmap | `type = "heatmap"` |
+| Band anchored to best variety | `reference = NULL` (default) |
+| Band anchored to specific variety | `reference = "VarName"` |
+| Interactive plotly widget | `interactive = TRUE` |
+| Extend before plotly conversion | `result + ggtitle(...)` |
+| Export tidy data frame | `return_data = TRUE` |
+
+---
+
+## References
+
+Tukey, J.W. (1949). Comparing individual means in the analysis of variance.
+*Biometrics*, **5**(2), 99–114.
+
+Piepho, H.P. (2004). An algorithm for a letter-based representation of all
+pairwise comparisons. *Journal of Computational and Graphical Statistics*,
+**13**(2), 456–466.
+

@@ -1,0 +1,494 @@
+---
+title: "Extracting and Padding Field Trial Layouts"
+subtitle: "`padTrial()` and `plot_padTrial()`"
+author: "biomAid package"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    number-sections: false
+    smooth-scroll: true
+    embed-resources: true
+    theme: litera
+    css: custom.css
+    highlight-style: github
+    code-fold: false
+    fig-width: 8
+    fig-height: 5
+    fig-dpi: 150
+    html-math-method: katex
+execute:
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+library(biomAid)
+library(ggplot2)
+```
+
+---
+
+## Overview
+
+Field trials commonly contain a mix of plot types — test lines (e.g. DH or
+breeding lines), check varieties, border plots, and guard rows — arranged
+across one or more blocks. Before fitting a spatial model it is often
+necessary to isolate the rectangular sub-grid occupied by the target plot
+type and ensure that every grid position within that rectangle is represented
+in the data frame, even if some plots are physically absent.
+
+`padTrial()` automates this preparation in four steps, applied independently
+within each group (block):
+
+1. **Duplicate check** — stops with an informative error if any
+   Row × Column position appears more than once within a group.
+2. **Bounding box** — identifies the minimum and maximum row and column
+   coordinates of the target plot type (`match`) to define the
+   extraction rectangle.
+3. **Subset** — retains only those rows that fall inside the bounding box,
+   dropping guard rows and checks that lie outside it.
+4. **Pad** — detects any Row × Column cells absent from the bounding box
+   and inserts placeholder rows for them, writing `fill_value` into
+   character/factor columns and `NA` into numeric columns.
+
+An `add` column flags every row as `"old"` (original) or `"new"` (inserted).
+
+`plot_padTrial()` visualises the result as a **Before / After** tile map,
+with inserted cells shown in light grey.
+
+---
+
+## Argument reference
+
+### `padTrial()`
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `data` | — | Input data frame containing the trial layout |
+| `pattern` | `"Row:Column"` | Colon-separated names of the two spatial coordinate columns |
+| `match` | `"DH"` | Plot type value(s) that define the target sub-trial |
+| `split` | `"Block"` | Column(s) defining independent processing groups; `NULL` = whole dataset |
+| `pad` | `TRUE` | Insert placeholder rows for missing grid cells |
+| `keep` | `split` | Columns whose values are carried into padded rows |
+| `fill_value` | `"Blank"` | String written into character/factor columns of padded rows |
+| `type_col` | `"Type"` | Name of the plot-type column |
+| `verbose` | `FALSE` | Print per-group bounding box and padding summary |
+
+### `plot_padTrial()`
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `result` | — | Data frame returned by `padTrial()` |
+| `data` | `NULL` | Original data; when supplied the Before panel includes guard rows |
+| `type_col` | `"Type"` | Column used to colour tiles |
+| `pattern` | `"Row:Column"` | Colon-separated spatial coordinate column names |
+| `split` | `NULL` | Grouping column(s) — groups appear as facet columns |
+| `label` | `NULL` | Column whose values are printed inside tiles |
+| `theme` | `theme_bw()` | ggplot2 theme |
+| `return_data` | `FALSE` | Return the tidy data frame instead of the plot |
+
+---
+
+## Example 1: Basic rectangular block with guard rows
+
+The simplest case — a single rectangular block of test lines (DH) enclosed
+by guard rows on all four sides. `padTrial()` detects the bounding box of
+the DH plots, drops the guards, and (in this complete case) inserts no
+padding.
+
+```{r ex1_data}
+# DH core: rows 3-8, columns 2-7  (6 rows × 6 cols = 36 DH plots)
+# Guard border: row 1-2, row 9-10, col 1, col 8  (all surrounding cells)
+set.seed(1L)
+rows <- 1:10
+cols <- 1:8
+
+ex1 <- expand.grid(Row = rows, Column = cols, KEEP.OUT.ATTRS = FALSE)
+ex1$Type  <- "Guard"
+ex1$Block <- "B1"
+ex1$Geno  <- NA_character_
+
+# Assign DH plots to the core
+core <- ex1$Row >= 3L & ex1$Row <= 8L & ex1$Column >= 2L & ex1$Column <= 7L
+ex1$Type[core] <- "DH"
+ex1$Geno[core] <- paste0("G", sprintf("%02d", seq_len(sum(core))))
+```
+
+```{r ex1_pad}
+res1 <- padTrial(
+  ex1,
+  pattern  = "Row:Column",
+  match    = "DH",
+  split    = "Block",
+  verbose  = TRUE
+)
+
+table(res1$add)
+```
+
+The Before panel (left, with `data =` supplied) shows the full layout
+including guard rows. The After panel shows just the extracted DH core — no
+padding was needed because the block was complete.
+
+```{r ex1_plot}
+#| fig-height: 5
+p1 <- plot_padTrial(res1, data = ex1, split = "Block",
+                    type_col = "Type", pattern = "Row:Column")
+print(p1)
+```
+
+---
+
+## Example 2: Block with internal missing plots
+
+Real trials frequently have plots that could not be sown, were lost to
+damage, or were deliberately left empty. Here several DH plots are absent
+from the interior of the block. `padTrial()` detects the gaps and inserts
+`"Blank"` placeholder rows so the grid is complete and rectangular — a
+requirement for most spatial modelling software.
+
+```{r ex2_data}
+set.seed(2L)
+ex2 <- expand.grid(Row = 1:8, Column = 1:6, KEEP.OUT.ATTRS = FALSE)
+ex2$Type  <- "DH"
+ex2$Block <- "B1"
+ex2$Geno  <- paste0("G", sprintf("%03d", seq_len(nrow(ex2))))
+
+# Remove 6 interior plots to simulate missing observations
+missing_idx <- which(
+  (ex2$Row == 2L & ex2$Column == 3L) |
+  (ex2$Row == 4L & ex2$Column == 2L) |
+  (ex2$Row == 4L & ex2$Column == 5L) |
+  (ex2$Row == 5L & ex2$Column == 4L) |
+  (ex2$Row == 6L & ex2$Column == 1L) |
+  (ex2$Row == 7L & ex2$Column == 6L)
+)
+ex2 <- ex2[-missing_idx, ]
+
+cat("Rows before padding:", nrow(ex2),
+    "\nExpected after padding:", 8L * 6L, "\n")
+```
+
+```{r ex2_pad}
+res2 <- padTrial(
+  ex2,
+  match      = "DH",
+  split      = "Block",
+  fill_value = "Blank",
+  verbose    = TRUE
+)
+
+cat("'new' rows inserted:", sum(res2$add == "new"), "\n")
+subset(res2, add == "new")[, c("Row", "Column", "Type", "Geno", "add")]
+```
+
+The Before panel shows the six white gaps where plots are missing. The After
+panel shows the completed grid with inserted cells in light grey.
+
+```{r ex2_plot}
+#| fig-height: 5
+p2 <- plot_padTrial(res2, data = ex2, split = "Block")
+print(p2)
+```
+
+---
+
+## Example 3: Non-rectangular block
+
+Not all trial blocks are perfect rectangles. A common scenario is an
+end-of-field block where some rows are shorter than others — the block is
+trapezoidal or L-shaped. `padTrial()` computes the bounding box of all
+target plots and pads the missing corner and edge positions to produce a
+rectangular grid.
+
+Here we construct a block shaped like a staircase: each successive pair of
+rows has one fewer column on the right-hand side.
+
+```{r ex3_data}
+# Staircase layout:
+#   Rows 1-2: columns 1-8
+#   Rows 3-4: columns 1-6  (right 2 cols absent)
+#   Rows 5-6: columns 1-4  (right 4 cols absent)
+#   Rows 7-8: columns 1-2  (right 6 cols absent)
+
+make_staircase <- function() {
+  parts <- list(
+    expand.grid(Row = 1:2, Column = 1:8),
+    expand.grid(Row = 3:4, Column = 1:6),
+    expand.grid(Row = 5:6, Column = 1:4),
+    expand.grid(Row = 7:8, Column = 1:2)
+  )
+  d        <- do.call(rbind, parts)
+  d$Type   <- "DH"
+  d$Block  <- "B1"
+  d$Geno   <- paste0("G", sprintf("%03d", seq_len(nrow(d))))
+  d
+}
+
+ex3 <- make_staircase()
+cat("Original rows:", nrow(ex3),
+    "\nBounding box would be 8 rows × 8 cols =", 8L * 8L, "cells\n")
+```
+
+```{r ex3_pad}
+res3 <- padTrial(
+  ex3,
+  match      = "DH",
+  split      = "Block",
+  fill_value = "Blank",
+  verbose    = TRUE
+)
+
+cat("'new' rows inserted:", sum(res3$add == "new"), "\n")
+```
+
+The Before panel clearly shows the staircase shape — the missing corner
+positions appear as white space. The After panel fills them all in with
+`"Blank"` placeholder tiles (light grey) to produce a complete 8 × 8 grid.
+
+```{r ex3_plot}
+#| fig-height: 5
+p3 <- plot_padTrial(res3, data = ex3, split = "Block")
+print(p3)
+```
+
+---
+
+## Example 4: Multiple blocks — each processed independently
+
+When a trial has multiple blocks, `split` ensures that each block is
+processed with its own bounding box. This is critical: blocks often occupy
+different row/column ranges and have different numbers of missing plots.
+Mixing them into a single pass would produce the wrong bounding box.
+
+Here we build three blocks that differ in both shape and completeness:
+
+- **Block B1** — complete 5 × 4 rectangle, no padding needed
+- **Block B2** — 6 × 5 rectangle with 4 internal missing plots
+- **Block B3** — non-rectangular (right-truncated), 5 rows × up to 6 cols
+
+```{r ex4_data}
+set.seed(4L)
+
+# B1: complete 5×4
+b1 <- expand.grid(Row = 1:5, Column = 1:4, KEEP.OUT.ATTRS = FALSE)
+b1$Type  <- "DH"
+b1$Block <- "B1"
+b1$Geno  <- paste0("G", sprintf("%03d", seq_len(nrow(b1))))
+
+# B2: 6×5 with 4 missing interior plots
+b2 <- expand.grid(Row = 1:6, Column = 1:5, KEEP.OUT.ATTRS = FALSE)
+b2$Type  <- "DH"
+b2$Block <- "B2"
+b2$Geno  <- paste0("G", sprintf("%03d", seq_len(nrow(b2))))
+miss_b2  <- which(
+  (b2$Row == 2L & b2$Column == 4L) |
+  (b2$Row == 3L & b2$Column == 2L) |
+  (b2$Row == 5L & b2$Column == 3L) |
+  (b2$Row == 6L & b2$Column == 5L)
+)
+b2 <- b2[-miss_b2, ]
+
+# B3: non-rectangular — right side truncated
+b3_parts <- list(
+  expand.grid(Row = 1:2, Column = 1:6),
+  expand.grid(Row = 3:4, Column = 1:4),
+  expand.grid(Row = 5:5, Column = 1:2)
+)
+b3        <- do.call(rbind, b3_parts)
+b3$Type   <- "DH"
+b3$Block  <- "B3"
+b3$Geno   <- paste0("G", sprintf("%03d", seq_len(nrow(b3))))
+
+ex4 <- rbind(b1, b2, b3)
+
+cat("Rows per block (before padding):\n")
+print(table(ex4$Block))
+```
+
+```{r ex4_pad}
+res4 <- padTrial(
+  ex4,
+  match      = "DH",
+  split      = "Block",
+  fill_value = "Blank",
+  verbose    = TRUE
+)
+
+cat("\nPadded rows per block:\n")
+print(table(res4$Block[res4$add == "new"]))
+```
+
+With `split = "Block"` each block gets its own bounding box and its own
+padding pass. The plot shows Before / After side-by-side for all three blocks.
+
+```{r ex4_plot}
+#| fig-height: 6
+#| fig-width: 10
+p4 <- plot_padTrial(res4, data = ex4, split = "Block")
+print(p4)
+```
+
+---
+
+## Example 5: Mixed plot types — DH lines and checks
+
+Trials often contain both test lines and check varieties within the same
+block. `padTrial()` uses `match` to define the bounding box from the target
+type only, but retains **all** non-guard plots that fall inside that
+bounding box — including checks.
+
+```{r ex5_data}
+set.seed(5L)
+ex5 <- expand.grid(Row = 1:8, Column = 1:6, KEEP.OUT.ATTRS = FALSE)
+ex5$Block <- "B1"
+
+# Assign plot types: checks occupy every 6th position; guards on rows 1 & 8
+ex5$Type  <- "DH"
+check_idx <- seq(3L, nrow(ex5), by = 6L)
+ex5$Type[check_idx]        <- "Check"
+ex5$Type[ex5$Row == 1L]    <- "Guard"
+ex5$Type[ex5$Row == 8L]    <- "Guard"
+
+ex5$Geno <- ifelse(ex5$Type == "Guard", NA_character_,
+                   paste0(ex5$Type, sprintf("%02d", seq_len(nrow(ex5)))))
+
+# Remove 3 DH interior plots
+miss5 <- which(ex5$Type == "DH")[c(2L, 10L, 18L)]
+ex5   <- ex5[-miss5, ]
+```
+
+```{r ex5_pad}
+res5 <- padTrial(
+  ex5,
+  match    = "DH",          # bounding box from DH only
+  split    = "Block",
+  verbose  = TRUE
+)
+
+cat("\nPlot types in result:\n")
+print(table(res5$Type))
+```
+
+Guards on rows 1 and 8 are outside the DH bounding box and are dropped.
+Checks inside the bounding box are retained. The three missing DH positions
+are padded.
+
+```{r ex5_plot}
+#| fig-height: 5
+p5 <- plot_padTrial(res5, data = ex5, split = "Block")
+print(p5)
+```
+
+---
+
+## Example 6: Multi-column split
+
+When the trial spans multiple sites and blocks, `split` accepts a character
+vector. Each unique combination of the split columns is processed
+independently. The temporary composite key is dropped from the result —
+only the original columns are returned.
+
+```{r ex6_data}
+# Two sites × two blocks each, some blocks with missing plots
+make_site_block <- function(site, block, miss_rows = NULL, miss_cols = NULL) {
+  d       <- expand.grid(Row = 1:5, Column = 1:4, KEEP.OUT.ATTRS = FALSE)
+  d$Site  <- site
+  d$Block <- block
+  d$Type  <- "DH"
+  d$Geno  <- paste0(site, block, "_G", sprintf("%02d", seq_len(nrow(d))))
+  if (!is.null(miss_rows)) {
+    rem <- which(d$Row %in% miss_rows & d$Column %in% miss_cols)
+    if (length(rem)) d <- d[-rem, ]
+  }
+  d
+}
+
+ex6 <- rbind(
+  make_site_block("S1", "B1"),
+  make_site_block("S1", "B2", miss_rows = c(2L, 4L), miss_cols = c(3L)),
+  make_site_block("S2", "B1", miss_rows = c(3L),     miss_cols = c(1L, 4L)),
+  make_site_block("S2", "B2")
+)
+```
+
+```{r ex6_pad}
+res6 <- padTrial(
+  ex6,
+  match  = "DH",
+  split  = c("Site", "Block"),
+  keep   = c("Site", "Block"),
+  verbose = TRUE
+)
+
+cat("\nPadded rows per Site × Block:\n")
+with(res6[res6$add == "new", ], table(Site, Block))
+```
+
+---
+
+## Extracting plot data — `return_data = TRUE`
+
+`plot_padTrial()` with `return_data = TRUE` returns the tidy data frame used
+internally to build the tile map. Columns are standardised: `row_num`,
+`col_num`, `fill_group`, `panel` (`"Before"` / `"After"`), `group`, `is_new`,
+and `label_text`.
+
+```{r return_data}
+df <- plot_padTrial(res2, data = ex2, split = "Block", return_data = TRUE)
+head(df)
+```
+
+The data frame can be passed into any `ggplot2` workflow:
+
+```{r bespoke}
+#| fig-height: 4
+df_aft <- df[df$panel == "After", ]
+
+ggplot(df_aft, aes(x = col_num, y = row_num, fill = fill_group)) +
+  geom_tile(colour = "white", linewidth = 0.4) +
+  geom_tile(data = df_aft[df_aft$is_new, ],
+            fill = "tomato", colour = "white", linewidth = 0.4) +
+  scale_y_reverse() +
+  scale_fill_manual(values = c(DH = "#4E79A7", Blank = "#DEDEDE"),
+                    name = "Type") +
+  labs(title = "Custom colour for padded cells",
+       x = "Column", y = "Row") +
+  theme_bw()
+```
+
+The ggplot object returned by `plot_padTrial()` can also be extended directly
+with `+`:
+
+```{r extend}
+#| fig-height: 5
+plot_padTrial(res4, data = ex4, split = "Block") +
+  ggplot2::ggtitle("Three-block trial: before and after padding",
+                   subtitle = "B1 complete · B2 internal gaps · B3 non-rectangular")
+```
+
+---
+
+## Summary
+
+| Task | Specification |
+|------|---------------|
+| Basic extraction (single block) | `padTrial(data, split = "Block")` |
+| No blocking column | `split = NULL` |
+| Multi-environment split | `split = c("Site", "Block"), keep = c("Site", "Block")` |
+| Custom target plot type | `match = "Line"` (or any value in `type_col`) |
+| Custom type column name | `type_col = "PlotKind"` |
+| Custom fill string | `fill_value = "Missing"` |
+| Suppress padding (extract only) | `pad = FALSE` |
+| Per-group diagnostics | `verbose = TRUE` |
+| Count padded rows | `table(result$add)` |
+| Inspect padded rows | `subset(result, add == "new")` |
+| Before/After plot (reconstruct Before) | `plot_padTrial(result)` |
+| Before/After plot (full original layout) | `plot_padTrial(result, data = original)` |
+| Multi-block faceted plot | `plot_padTrial(result, data = original, split = "Block")` |
+| Label tiles with genotype | `label = "Geno"` |
+| Export plot data | `return_data = TRUE` |
