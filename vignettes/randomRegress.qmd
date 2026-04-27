@@ -1,7 +1,7 @@
 ---
-title: "Multivariate Random Regression of Treatment BLUPs"
+title: "Random Regression of Treatment BLUPs from multi-treatment MET anlyses"
 subtitle: "`randomRegress()` and `plot_randomRegress()`"
-author: "biomAid package"
+author: "Julian Taylor"
 date: today
 format:
   html:

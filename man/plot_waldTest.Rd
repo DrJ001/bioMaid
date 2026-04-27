@@ -22,8 +22,8 @@ argument, \code{TRUE} (default) produces one facet panel per group with free
 y-scales; \code{FALSE} places all groups on a single panel separated by dotted
 horizontal lines.}
 
-\item{ci_level}{Numeric in (0, 1).  Confidence level for the CI arms on
-Contrast rows.  Default \code{0.95}.}
+\item{ci_level}{Numeric in (0, 1).  Confidence level for the CI arms.
+Default \code{0.95}.}
 
 \item{alpha}{Numeric significance threshold.  Controls the colour-scale
 break between non-significant (grey) and significant (warm gradient)
@@ -44,31 +44,28 @@ A \link[ggplot2:ggplot]{ggplot2::ggplot} object returned invisibly (so it can be
 with \code{+}), or a data frame when \code{return_data = TRUE}.
 }
 \description{
-Produces a forest plot from the output of \code{\link[=waldTest]{waldTest()}}.
+Produces a forest plot from the \verb{$Contrasts} component of a \code{\link[=waldTest]{waldTest()}}
+result.  A forest plot requires an estimate and standard error for each row,
+so joint zero tests (which have neither) cannot be displayed.  If \code{res}
+contains only zero-test results an error is raised; if it contains both
+contrast and zero-test results a warning is issued and the zero results are
+dropped.
 
-\strong{Contrast rows} are drawn as filled circles (\u25CF) with horizontal
-confidence interval bars.  \strong{Joint zero test rows} are drawn as filled
-diamonds (\u25C6), anchored at \eqn{x = 0} with no CI bar, on a light-blue
-background band to make them immediately distinguishable.
-
-Points are coloured by \eqn{-\log_{10}(p)}: non-significant results
+Each contrast is shown as a filled circle with horizontal confidence interval
+bars.  Points are coloured by \eqn{-\log_{10}(p)}: non-significant results
 (p \eqn{\geq} \code{alpha}) appear in grey; significant results follow a warm
 gradient from gold through to dark red as evidence strengthens.  The raw
-p-value is printed beside each row.
-
-A vertical dashed line marks \eqn{x = 0}.
+p-value is printed beside each row.  A vertical dashed line marks
+\eqn{x = 0}.
 }
 \examples{
 \dontrun{
-## Pairwise contrasts + joint zero test, no by-group
+## Pairwise contrasts, no by-group
 res <- waldTest(pred,
-  cc = list(
-    list(coef = c("N0","N1","N2"), type = "con",  comp = "pairwise"),
-    list(coef = c("N1","N2"),      type = "zero",  group = "N1:N2 joint")
-  ))
+  cc = list(list(coef = c("N0","N1","N2"), type = "con", comp = "pairwise")))
 plot_waldTest(res)
 
-## By-group (one panel per site, default)
+## By-group — one panel per site (default)
 res2 <- waldTest(pred_site,
   cc = list(list(coef = c("N0","N1","N2"), type = "con", comp = "pairwise")),
   by = "Site")

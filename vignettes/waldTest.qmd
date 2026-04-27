@@ -1,7 +1,7 @@
 ---
 title: "Wald Tests on Fixed-Effect Contrasts"
 subtitle: "`waldTest()` and `plot_waldTest()`"
-author: "biomAid package"
+author: "Julian Taylor"
 date: today
 format:
   html:

@@ -1,7 +1,7 @@
 ---
-title: "Multivariate Fixed-Effects Regression of Treatment BLUEs"
+title: "Fixed Regression of Treatment BLUPs from multi-treatment MET anlyses"
 subtitle: "`fixedRegress()` and `plot_fixedRegress()`"
-author: "biomAid package"
+author: "Julian Taylor"
 date: today
 format:
   html:
@@ -594,17 +594,15 @@ print(p_titled)
 
 ## References
 
-Finlay, K.W. & Wilkinson, G.N. (1963). The analysis of adaptation in a
-plant-breeding programme. *Australian Journal of Agricultural Research*,
-**14**(6), 742–754. <https://doi.org/10.1071/AR9630742>
+Lemerle, D., Smith, A., Verbeek, B., Koetz, E., Lockley, P. & Martin, P. (2006).
+Incremental crop tolerance to weeds: A measure for selecting competitive ability
+in Australian wheats. *Euphytica*, **149**, 85–95.
+<https://doi.org/10.1007/s10681-005-9056-5>
 
-Eberhart, S.A. & Russell, W.A. (1966). Stability parameters for comparing
-varieties. *Crop Science*, **6**(1), 36–40.
-<https://doi.org/10.2135/cropsci1966.0011183X000600010011x>
+McDonald G, Bovill W, Taylor J, Wheeler R. (2015) Responses to phosphorus among wheat genotypes.
+*Crop and Pasture Science*, **66**(5), 430–444. (2015). <https://doi.org/10.1071/CP14191>
 
-McDonald G, Bovill W, Taylor J, Wheeler R. (2015). Responses to phosphorus
-among wheat genotypes. *Crop and Pasture Science*, **66**(5), 430–444.
-<https://doi.org/10.1071/CP14191>
-
-Searle, S.R., Casella, G. & McCulloch, C.E. (1992). *Variance Components*.
-Wiley.
+The WtmsDW Locus on Wheat Chromosome 2B Controls Major Natural Variation for
+Floret Sterility Responses to Heat Stress at Booting Stage.
+*Frontiers in Plant Science*, **12**, 635397. (2021).
+<https://doi.org/10.3389/fpls.2021.635397>
