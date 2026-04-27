@@ -74,6 +74,12 @@ print.pc_interactive <- function(x, ...) {
 ## cannot capture — and the chunk output shows NULL instead of the widget.
 ## This method converts to plotly and hands the widget back to knitr via
 ## knitr::knit_print() so it is properly embedded in the HTML output.
+##
+## @importFrom knitr knit_print is required so roxygen2 registers this as
+## S3method(knit_print, pc_interactive) in NAMESPACE rather than a plain
+## export — without the S3method entry, UseMethod("knit_print") in knitr
+## will never dispatch here.
+#' @importFrom knitr knit_print
 #' @export
 knit_print.pc_interactive <- function(x, ...) {
   if (!requireNamespace("plotly",  quietly = TRUE))
