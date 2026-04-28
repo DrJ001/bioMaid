@@ -45,7 +45,7 @@ required treatments for a regression to be attempted.  Defaults to
 produce a warning and are omitted.}
 
 \item{...}{Additional arguments forwarded to
-\code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}.}
+\code{asreml::predict.asreml()}.}
 }
 \value{
 A named list with the following elements:
@@ -146,5 +146,5 @@ res_cust <- fixedRegress(model,
 
 }
 \seealso{
-\code{\link[=randomRegress]{randomRegress()}}, \code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}
+\code{\link[=randomRegress]{randomRegress()}}, \code{asreml::predict.asreml()}
 }

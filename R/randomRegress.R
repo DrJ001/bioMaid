@@ -115,7 +115,7 @@
 #'   BLUP.  If `FALSE` it is the posterior variance
 #'   \eqn{\sigma_{j|A_j}^2 - \text{PEV}}.  Ignored for FA models
 #'   (HSD is always `NA`).
-#' @param ... Additional arguments forwarded to [asreml::predict.asreml()]
+#' @param ... Additional arguments forwarded to `asreml::predict.asreml()`
 #'   (non-FA terms only).
 #'
 #' @return A named list:
@@ -147,7 +147,7 @@
 #'   \item{`type`}{The `type` argument used.}
 #' }
 #'
-#' @seealso [asreml::predict.asreml()]
+#' @seealso `asreml::predict.asreml()`
 #'
 #' @examples
 #' \dontrun{

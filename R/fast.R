@@ -7,7 +7,7 @@
 #' Mixed Model fitted in ASReml-R V4.
 #'
 #' Both methods build on the rotated FA loadings \eqn{\hat{\bm{\Lambda}}} and
-#' score EBLUPs \eqn{\hat{\bm{f}}} returned by [ASExtras4::fa.asreml()].  The
+#' score EBLUPs \eqn{\hat{\bm{f}}} returned by `ASExtras4::fa.asreml()`.  The
 #' **Common Variety Effect** (CVE) for genotype \eqn{g} in environment \eqn{j}
 #' is the FA regression prediction:
 #'
@@ -82,7 +82,7 @@
 #' @param ic.num  Integer.  Number of factors used to form iClasses and compute
 #'   iClassOP.  Must be \eqn{\le k}.  Only used when `type` includes iClass.
 #'   Default `2`.
-#' @param ...     Additional arguments forwarded to [ASExtras4::fa.asreml()].
+#' @param ...     Additional arguments forwarded to `ASExtras4::fa.asreml()`.
 #'
 #' @return A data frame with one row per environment \eqn{\times} genotype
 #'   combination, containing:
@@ -115,7 +115,7 @@
 #' mixed models: models with independent variety effects.
 #' *Frontiers in Plant Science*, 12, 737462.
 #'
-#' @seealso [ASExtras4::fa.asreml()]
+#' @seealso `ASExtras4::fa.asreml()`
 #' @export
 fast <- function(model, term = "fa(Site, 4):Genotype",
                  type   = c("all", "FAST", "iClass"),

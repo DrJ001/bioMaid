@@ -30,7 +30,5 @@ Suggests:
     plotly,
     jsonlite,
     htmlwidgets,
-    pkgdown,
-    asreml,
-    ASExtras4
+    pkgdown
 Config/testthat/edition: 3

@@ -35,7 +35,7 @@
 #' @param model   An ASReml-R V4 model object.
 #' @param term    Character string specifying the `classify` term, e.g.
 #'   `"Treatment:Genotype"`.  Predictions are obtained via
-#'   [asreml::predict.asreml()].
+#'   `asreml::predict.asreml()`.
 #' @param by      Grouping specification.  Comparisons are performed
 #'   independently within each level of the group.  Accepted forms:
 #'   \describe{
@@ -56,7 +56,7 @@
 #'   \eqn{\bm{G} - \text{PEV}} is used instead.
 #' @param alpha   Significance level.  Default `0.05`.
 #' @param ...     Additional arguments forwarded to
-#'   [asreml::predict.asreml()].
+#'   `asreml::predict.asreml()`.
 #'
 #' @return A data frame with one row per non-missing predicted value,
 #'   containing:
@@ -103,7 +103,7 @@
 #'                 pev  = FALSE)
 #' }
 #'
-#' @seealso [waldTest()] for pairwise p-values, [asreml::predict.asreml()]
+#' @seealso [waldTest()] for pairwise p-values, `asreml::predict.asreml()`
 #' @export
 compare <- function(model, term, by = NULL,
                     type  = c("HSD", "LSD", "Bonferroni"),

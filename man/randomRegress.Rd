@@ -53,7 +53,7 @@ BLUP.  If \code{FALSE} it is the posterior variance
 \eqn{\sigma_{j|A_j}^2 - \text{PEV}}.  Ignored for FA models
 (HSD is always \code{NA}).}
 
-\item{...}{Additional arguments forwarded to \code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}
+\item{...}{Additional arguments forwarded to \code{asreml::predict.asreml()}
 (non-FA terms only).}
 }
 \value{
@@ -144,5 +144,5 @@ res_cust <- randomRegress(model, levs = c("N0","N1","N2"),
 
 }
 \seealso{
-\code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}
+\code{asreml::predict.asreml()}
 }

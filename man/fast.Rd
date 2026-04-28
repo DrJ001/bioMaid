@@ -32,7 +32,7 @@ Default \code{"fa(Site, 4):Genotype"}.}
 iClassOP.  Must be \eqn{\le k}.  Only used when \code{type} includes iClass.
 Default \code{2}.}
 
-\item{...}{Additional arguments forwarded to \code{\link[ASExtras4:fa.asreml]{ASExtras4::fa.asreml()}}.}
+\item{...}{Additional arguments forwarded to \code{ASExtras4::fa.asreml()}.}
 }
 \value{
 A data frame with one row per environment \eqn{\times} genotype
@@ -63,7 +63,7 @@ approaches for summarising variety performance from a Factor Analytic Linear
 Mixed Model fitted in ASReml-R V4.
 
 Both methods build on the rotated FA loadings \eqn{\hat{\bm{\Lambda}}} and
-score EBLUPs \eqn{\hat{\bm{f}}} returned by \code{\link[ASExtras4:fa.asreml]{ASExtras4::fa.asreml()}}.  The
+score EBLUPs \eqn{\hat{\bm{f}}} returned by \code{ASExtras4::fa.asreml()}.  The
 \strong{Common Variety Effect} (CVE) for genotype \eqn{g} in environment \eqn{j}
 is the FA regression prediction:
 
@@ -138,5 +138,5 @@ mixed models: models with independent variety effects.
 \emph{Frontiers in Plant Science}, 12, 737462.
 }
 \seealso{
-\code{\link[ASExtras4:fa.asreml]{ASExtras4::fa.asreml()}}
+\code{ASExtras4::fa.asreml()}
 }

@@ -19,7 +19,7 @@ compare(
 
 \item{term}{Character string specifying the \code{classify} term, e.g.
 \code{"Treatment:Genotype"}.  Predictions are obtained via
-\code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}.}
+\code{asreml::predict.asreml()}.}
 
 \item{by}{Grouping specification.  Comparisons are performed
 independently within each level of the group.  Accepted forms:
@@ -45,7 +45,7 @@ is in the random part of the model, the posterior variance
 \item{alpha}{Significance level.  Default \code{0.05}.}
 
 \item{...}{Additional arguments forwarded to
-\code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}.}
+\code{asreml::predict.asreml()}.}
 }
 \value{
 A data frame with one row per non-missing predicted value,
@@ -127,5 +127,5 @@ res5 <- compare(model,
 
 }
 \seealso{
-\code{\link[=waldTest]{waldTest()}} for pairwise p-values, \code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}
+\code{\link[=waldTest]{waldTest()}} for pairwise p-values, \code{asreml::predict.asreml()}
 }

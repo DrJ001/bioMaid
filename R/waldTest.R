@@ -122,7 +122,7 @@
 #'
 #' @description
 #' Performs Wald tests on linear contrasts of predicted values obtained from
-#' [asreml::predict.asreml()].  Working directly with `predict()` output
+#' `asreml::predict.asreml()`.  Working directly with `predict()` output
 #' means contrasts are specified through **meaningful factor-level labels**
 #' rather than raw coefficient indices, and the prediction error
 #' variance--covariance matrix (`pred$vcov`) is used directly  -- no access to
@@ -257,7 +257,7 @@
 #'                  test = "F")
 #' }
 #'
-#' @seealso [asreml::predict.asreml()]
+#' @seealso `asreml::predict.asreml()`
 #' @export
 waldTest <- function(pred, cc, by = NULL,
                      test     = c("Wald", "F"),
@@ -452,15 +452,15 @@ waldTest <- function(pred, cc, by = NULL,
 
 # ---- Convenience S3 method for asreml models ----------------------------
 
-#' @describeIn waldTest Convenience method that calls [asreml::predict.asreml()]
+#' @describeIn waldTest Convenience method that calls `asreml::predict.asreml()`
 #'   internally.  `classify` is required; `test = "F"` uses `object$nedf`
 #'   automatically.
 #'
 #' @param object   An ASReml-R V4 model object.
-#' @param classify Character string passed to [asreml::predict.asreml()] as
+#' @param classify Character string passed to `asreml::predict.asreml()` as
 #'   the `classify` argument.
 #' @param ...      Additional arguments forwarded to
-#'   [asreml::predict.asreml()].
+#'   `asreml::predict.asreml()`.
 #'
 #' @export
 waldTest.asreml <- function(object, classify, cc, by = NULL,

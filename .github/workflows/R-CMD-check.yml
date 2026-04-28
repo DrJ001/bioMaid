@@ -42,6 +42,8 @@ jobs:
             any::rcmdcheck
             any::covr
           needs: check
+          # asreml and ASExtras4 are commercial/non-CRAN packages; skip them
+          ignore-packages: asreml, ASExtras4
 
       - name: Check
         run: |

@@ -66,7 +66,7 @@
 #'   \eqn{\max(5,\; 2(|A_j|_{\max} + 1))}.  Groups below this threshold
 #'   produce a warning and are omitted.
 #' @param ...     Additional arguments forwarded to
-#'   [asreml::predict.asreml()].
+#'   `asreml::predict.asreml()`.
 #'
 #' @return A named list with the following elements:
 #' \describe{
@@ -87,7 +87,7 @@
 #'   \item{`type`}{The `type` argument used.}
 #' }
 #'
-#' @seealso [randomRegress()], [asreml::predict.asreml()]
+#' @seealso [randomRegress()], `asreml::predict.asreml()`
 #'
 #' @examples
 #' \dontrun{

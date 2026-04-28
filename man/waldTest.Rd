@@ -83,11 +83,11 @@ positive) dependence between test statistics; more conservative than
 
 \item{object}{An ASReml-R V4 model object.}
 
-\item{classify}{Character string passed to \code{\link[asreml:predict.asreml]{asreml::predict.asreml()}} as
+\item{classify}{Character string passed to \code{asreml::predict.asreml()} as
 the \code{classify} argument.}
 
 \item{...}{Additional arguments forwarded to
-\code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}.}
+\code{asreml::predict.asreml()}.}
 }
 \value{
 A named list with elements:
@@ -105,7 +105,7 @@ Columns: grouping variable (if \code{by} used), \code{Test},
 }
 \description{
 Performs Wald tests on linear contrasts of predicted values obtained from
-\code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}.  Working directly with \code{predict()} output
+\code{asreml::predict.asreml()}.  Working directly with \code{predict()} output
 means contrasts are specified through \strong{meaningful factor-level labels}
 rather than raw coefficient indices, and the prediction error
 variance--covariance matrix (\code{pred$vcov}) is used directly  -- no access to
@@ -127,7 +127,7 @@ for a set of \eqn{q} coefficients simultaneously.  The statistic is
 }
 \section{Functions}{
 \itemize{
-\item \code{waldTest.asreml()}: Convenience method that calls \code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}
+\item \code{waldTest.asreml()}: Convenience method that calls \code{asreml::predict.asreml()}
 internally.  \code{classify} is required; \code{test = "F"} uses \code{object$nedf}
 automatically.
 
@@ -185,5 +185,5 @@ res6 <- waldTest(model, classify = "Treatment",
 
 }
 \seealso{
-\code{\link[asreml:predict.asreml]{asreml::predict.asreml()}}
+\code{asreml::predict.asreml()}
 }
