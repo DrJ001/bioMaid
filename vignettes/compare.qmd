@@ -532,7 +532,7 @@ blue = not significant, red = significantly worse).  Unhovering restores the
 original state.
 
 ```{r interactive}
-#| eval: true
+#| eval: !expr asreml_ok
 # Single-site subset keeps the demo focused on the hover interaction
 as_plotly(plot_compare(res_hsd |> subset(Site == "Env1"),
                        type = "dotplot", interactive = TRUE))
