@@ -28,7 +28,8 @@ execute:
 #| include: false
 library(biomAid)
 library(ggplot2)
-library(asreml)
+asreml_ok <- requireNamespace("asreml", quietly = TRUE)
+if (asreml_ok) library(asreml)
 ```
 
 ---
@@ -153,6 +154,7 @@ We use `simTrialData()` to generate a balanced multi-environment trial with
 20 varieties, 4 sites, and 3 nitrogen treatments (T0, T1, T2).
 
 ```{r simulate}
+#| eval: !expr asreml_ok
 #| cache: true
 out <- simTrialData(
   nvar          = 20L,
@@ -174,6 +176,7 @@ Variety must be in the fixed effects so that `predict()` returns BLUEs for
 every Variety × Site combination — the basis for the comparison criteria.
 
 ```{r fit_model}
+#| eval: !expr asreml_ok
 #| cache: true
 #| results: hide
 asreml.options(trace = FALSE)
@@ -196,6 +199,7 @@ global group (no `by` argument).  `compare()` calls `predict()` internally
 using `term` as the `classify`.
 
 ```{r hsd_single}
+#| eval: !expr asreml_ok
 res1 <- compare(
   model,
   term = "Variety",
@@ -213,6 +217,7 @@ which the criterion is based.
 Applying the criterion manually:
 
 ```{r hsd_single_apply}
+#| eval: !expr asreml_ok
 # Are Var01 and Var20 significantly different?
 preds <- setNames(res1$predicted.value, as.character(res1$Variety))
 diff  <- abs(preds["Var01"] - preds["Var20"])
@@ -230,6 +235,7 @@ each site's own prediction error variance matrix and thus its own criterion.
 This is the most common usage: **20 varieties compared within each of 4 sites**.
 
 ```{r hsd_by_site}
+#| eval: !expr asreml_ok
 #| cache: true
 res_hsd <- compare(
   model,
@@ -256,6 +262,7 @@ asking "which varieties perform best under each treatment at each site?".
 The colon-string form `"Site:Treatment"` is equivalent to the vector form.
 
 ```{r hsd_multi_by}
+#| eval: !expr asreml_ok
 #| cache: true
 # Compare varieties within each Site × Treatment combination
 res3a <- compare(model, term = "Variety:Site:Treatment",
@@ -279,6 +286,7 @@ LSD is the most liberal (no correction); Bonferroni is the most conservative;
 HSD sits between them for most group sizes.
 
 ```{r three_criteria}
+#| eval: !expr asreml_ok
 #| cache: true
 res_lsd <- compare(model, term = "Variety:Site", by = "Site", type = "LSD")
 res_bon <- compare(model, term = "Variety:Site", by = "Site",
@@ -309,6 +317,7 @@ We refit the model with **Variety in the random effects** and
 `Treatment × Site` fixed, so `predict()` returns BLUPs rather than BLUEs.
 
 ```{r pev_false}
+#| eval: !expr asreml_ok
 #| cache: true
 #| results: hide
 model_rnd <- asreml(
@@ -322,6 +331,7 @@ model_rnd <- update(model_rnd)
 ```
 
 ```{r pev_false_compare}
+#| eval: !expr asreml_ok
 res_pev  <- compare(model_rnd, term = "Variety", type = "HSD", pev = TRUE)
 res_post <- compare(model_rnd, term = "Variety", type = "HSD", pev = FALSE)
 
@@ -348,6 +358,7 @@ A stricter significance level widens the criterion, reducing the number of
 significant pairs.
 
 ```{r alpha_adjust}
+#| eval: !expr asreml_ok
 #| cache: true
 r_05 <- compare(model, term = "Variety:Site", by = "Site",
                 type = "HSD", alpha = 0.05)
@@ -376,6 +387,7 @@ within the band is not significantly different from the best; those outside
 value.
 
 ```{r dotplot_single}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p1 <- plot_compare(res_hsd |> subset(Site == "Env1"), type = "dotplot") +
   ggtitle("Variety comparison — Env1 (HSD)")
@@ -386,6 +398,7 @@ When a `by`-grouped result is passed, each group becomes its own facet panel
 with its own site-specific criterion band:
 
 ```{r dotplot_grouped}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p2 <- plot_compare(res_hsd, type = "dotplot") +
   ggtitle("Variety comparison by site (HSD)",
@@ -404,6 +417,7 @@ This is the natural way to ask *"which varieties are significantly better or
 worse than our commercial check?"*
 
 ```{r dotplot_reference}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 # Use Var10 as the commercial check reference
 p3 <- plot_compare(res_hsd, type = "dotplot", reference = "Var10") +
@@ -426,6 +440,7 @@ non-overlapping pair stands out directly, not just those that fall outside a
 single band.
 
 ```{r errbar_single}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p_eb1 <- plot_compare(res_hsd |> subset(Site == "Env1"), type = "errbar") +
   ggtitle("Half-HSD error bars — Env1",
@@ -438,6 +453,7 @@ between sites because each site has its own spatial error variance and therefore
 its own HSD.
 
 ```{r errbar_grouped}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p_eb2 <- plot_compare(res_hsd, type = "errbar") +
   ggtitle("Half-HSD error bars by site",
@@ -450,6 +466,7 @@ The criterion type changes the bar width directly — LSD bars are shorter
 makes the effect of the multiplicity correction immediately visible:
 
 ```{r errbar_lsd}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p_eb3 <- plot_compare(res_lsd |> subset(Site == "Env1"), type = "errbar") +
   ggtitle("Half-LSD error bars — Env1",
@@ -465,6 +482,7 @@ Letters are assigned by the descending sweep algorithm using the HSD as the
 significance threshold.
 
 ```{r letters_single}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p4 <- plot_compare(res_hsd |> subset(Site == "Env1"), type = "letters") +
   ggtitle("Compact letter display — Env1 (HSD)")
@@ -475,6 +493,7 @@ With `by`-groups, each site gets its own panel with independent letter
 assignments:
 
 ```{r letters_grouped}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p5 <- plot_compare(res_hsd, type = "letters") +
   ggtitle("CLD — 20 varieties by site",
@@ -490,6 +509,7 @@ criterion.  For 20+ varieties this reveals the full discrimination pattern at a
 glance — something no letter display can convey.
 
 ```{r heatmap_variety}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 #| fig-width: 10
 p6 <- plot_compare(res_hsd, type = "heatmap") +
@@ -534,11 +554,13 @@ All three plot types support `return_data = TRUE`, which returns the tidy
 data frame used to build the plot:
 
 ```{r return_data}
+#| eval: !expr asreml_ok
 df_dot <- plot_compare(res_hsd, type = "dotplot", return_data = TRUE)
 head(df_dot[, c("Group", "Variety", "pred", "crit", "rank", "sig")])
 ```
 
 ```{r return_data_heat}
+#| eval: !expr asreml_ok
 df_heat <- plot_compare(res_hsd |> subset(Site == "Env1"),
                         type   = "heatmap",
                         return_data = TRUE)
@@ -548,6 +570,7 @@ head(df_heat[, c("Var_x", "Var_y", "diff", "sig")])
 The ggplot object returned by `plot_compare()` can also be extended with `+`:
 
 ```{r extend}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 plot_compare(res_hsd, type = "letters") +
   ggplot2::ggtitle("Tukey HSD — 20 varieties across 4 sites",

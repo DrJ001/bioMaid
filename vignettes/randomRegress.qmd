@@ -28,8 +28,9 @@ execute:
 #| include: false
 library(biomAid)
 library(ggplot2)
-library(asreml)
-library(ASExtras4)
+asreml_ok <- requireNamespace("asreml", quietly = TRUE)
+if (asreml_ok) library(asreml)
+if (asreml_ok && requireNamespace("ASExtras4", quietly = TRUE)) library(ASExtras4)
 ```
 
 ---
@@ -157,6 +158,7 @@ T2 = high N). A composite `TSite` factor (e.g. `"T0-Env1"`) is created
 to serve as the Treatment × Site classification for the ASReml model.
 
 ```{r simulate}
+#| eval: !expr asreml_ok
 #| cache: true
 out <- simTrialData(
   nvar       = 20L,
@@ -179,6 +181,7 @@ choice for multi-environment trials: they are parsimonious, converge well,
 and capture the dominant axes of genotype × environment interaction.
 
 ```{r fit_model}
+#| eval: !expr asreml_ok
 #| cache: true
 #| results: hide
 asreml.options(trace = FALSE)
@@ -193,6 +196,7 @@ model <- update(model)
 ```
 
 ```{r model_summary}
+#| eval: !expr asreml_ok
 vc <- summary(model)$varcomp
 vc[grepl("TSite", rownames(vc)), ]
 ```
@@ -205,6 +209,7 @@ responsiveness components using baseline conditioning (T0 as efficiency,
 T1 and T2 as responsiveness):
 
 ```{r run_rr}
+#| eval: !expr asreml_ok
 #| cache: true
 res <- randomRegress(
   model,
@@ -218,6 +223,7 @@ res <- randomRegress(
 The return value:
 
 ```{r show_structure}
+#| eval: !expr asreml_ok
 str(res, max.level = 1)
 ```
 
@@ -236,6 +242,7 @@ treatments: $\hat{\beta} > 1$ means the conditioned treatment varies more
 than the baseline; $\hat{\beta} < 1$ means it varies less.
 
 ```{r plot_regress}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p_reg <- plot_randomRegress(res, type = "regress")
 print(p_reg)
@@ -263,6 +270,7 @@ both axes divide each panel into four quadrants:
 | Bottom-left | Low | Low | Poor performance on both scales |
 
 ```{r plot_quadrant}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p_quad <- plot_randomRegress(res, type = "quadrant")
 print(p_quad)
@@ -295,6 +303,7 @@ The same six varieties are annotated consistently across all site and
 treatment-pair panels.
 
 ```{r highlight_default}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 # Orange = top-right archetypes, Blue = bottom-left archetypes
 p_hl <- plot_randomRegress(res, type = "quadrant", highlight = "default")
@@ -307,6 +316,7 @@ Pass a character vector of variety names to `highlight` to annotate specific
 varieties of interest (shown in green):
 
 ```{r highlight_custom}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 user_vars <- levels(factor(res$blups$Variety))[c(1L, 10L, 20L)]
 p_custom  <- plot_randomRegress(res, type  = "quadrant",
@@ -320,6 +330,7 @@ Set `highlight = NULL` to suppress annotation entirely and draw all points
 in a single colour:
 
 ```{r highlight_none}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p_none <- plot_randomRegress(res, type = "quadrant", highlight = NULL)
 print(p_none)
@@ -333,6 +344,7 @@ For results with many conditioned treatments, `treatments` restricts which
 pairs appear in the plot:
 
 ```{r treatments_filter}
+#| eval: !expr asreml_ok
 #| fig-height: 4
 p_t1 <- plot_randomRegress(res, type = "quadrant", treatments = "T1")
 print(p_t1)
@@ -348,6 +360,7 @@ positive correlations (dark red) indicate treatments and/or sites that share
 genetic rankings; negative correlations (dark blue) indicate rank reversal.
 
 ```{r plot_gmat}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 #| fig-width: 8
 p_gmat <- plot_randomRegress(res, type = "gmat")
@@ -368,6 +381,7 @@ data frame used to build the plot. This is useful for bespoke
 visualisations or downstream analysis.
 
 ```{r return_data}
+#| eval: !expr asreml_ok
 df_quad <- plot_randomRegress(res, type = "quadrant", return_data = TRUE)
 head(df_quad)
 ```
@@ -375,6 +389,7 @@ head(df_quad)
 The data frame can be passed to any `ggplot2` workflow:
 
 ```{r bespoke}
+#| eval: !expr asreml_ok
 #| fig-height: 4
 # Custom plot: quadrant for T1 only, custom colour by site
 df_t1 <- plot_randomRegress(res, type = "quadrant",

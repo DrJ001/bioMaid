@@ -28,7 +28,8 @@ execute:
 #| include: false
 library(biomAid)
 library(ggplot2)
-library(asreml)
+asreml_ok <- requireNamespace("asreml", quietly = TRUE)
+if (asreml_ok) library(asreml)
 ```
 
 ---
@@ -188,6 +189,7 @@ T2 = high N). Treatment effects are set to span a clear range so that the
 regression patterns are easy to interpret.
 
 ```{r simulate}
+#| eval: !expr asreml_ok
 #| cache: true
 out <- simTrialData(
   nvar          = 20L,
@@ -211,6 +213,7 @@ Variety combination — the raw material for the OLS regressions in
 `fixedRegress()`.
 
 ```{r fit_model}
+#| eval: !expr asreml_ok
 #| cache: true
 #| results: hide
 asreml.options(trace = FALSE)
@@ -231,6 +234,7 @@ the `classify`. The `by` argument splits the analysis so that separate OLS
 regressions are performed within each site:
 
 ```{r run_fr_baseline}
+#| eval: !expr asreml_ok
 #| cache: true
 #| dependson: fit_model
 res_base <- fixedRegress(
@@ -244,6 +248,7 @@ res_base <- fixedRegress(
 The return value is a named list:
 
 ```{r show_structure}
+#| eval: !expr asreml_ok
 str(res_base, max.level = 1)
 ```
 
@@ -252,6 +257,7 @@ The first few rows of `blues` show the raw BLUEs plus the response indices
 (`HSD.*`):
 
 ```{r blues_head}
+#| eval: !expr asreml_ok
 head(res_base$blues)
 ```
 
@@ -267,6 +273,7 @@ represents how much each genotype over- or under-performs relative to what its
 T0 BLUE would predict.
 
 ```{r baseline}
+#| eval: !expr asreml_ok
 res_base <- fixedRegress(
   model,
   term = "Treatment:Site:Variety",
@@ -280,6 +287,7 @@ The OLS slopes $\hat{\beta}$ for each conditioned treatment within each site
 are stored in `res$beta`:
 
 ```{r beta_baseline}
+#| eval: !expr asreml_ok
 res_base$beta$T1
 res_base$beta$T2
 ```
@@ -290,6 +298,7 @@ residual standard deviations $\hat{\sigma}_{jk}$ (one per conditioned treatment
 per group) are in `res$sigmat`:
 
 ```{r sigmat}
+#| eval: !expr asreml_ok
 res_base$sigmat
 ```
 
@@ -303,6 +312,7 @@ index for T2 captures the genetic variation in high-nitrogen response that is
 *not* already explained by baseline performance or low-nitrogen response.
 
 ```{r sequential}
+#| eval: !expr asreml_ok
 res_seq <- fixedRegress(
   model,
   term = "Treatment:Site:Variety",
@@ -319,6 +329,7 @@ The beta data frame for T2 now has two slope columns — one for T0 and one
 for T1:
 
 ```{r beta_seq}
+#| eval: !expr asreml_ok
 res_seq$beta$T2
 ```
 
@@ -333,6 +344,7 @@ treatment BLUEs. This is the most conservative scheme: it removes the maximum
 amount of shared genetic variation before extracting the residual.
 
 ```{r partial}
+#| eval: !expr asreml_ok
 res_part <- fixedRegress(
   model,
   term = "Treatment:Site:Variety",
@@ -356,6 +368,7 @@ implies a specific hierarchy — for example, treating T0 as the unconditional
 baseline and using a custom asymmetric conditioning for T1 and T2.
 
 ```{r custom}
+#| eval: !expr asreml_ok
 res_cust <- fixedRegress(
   model,
   term = "Treatment:Site:Variety",
@@ -390,6 +403,7 @@ so that the zero reference lines fall at the centre of each panel and the
 above/below-average split has a clear biological meaning.
 
 ```{r plot_regress}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 p_reg <- plot_fixedRegress(res_base, type = "regress")
 print(p_reg)
@@ -400,6 +414,7 @@ Reference lines are drawn at the within-group treatment means (rather than
 zero) to preserve the above/below-average interpretation:
 
 ```{r plot_regress_raw}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 p_reg_raw <- plot_fixedRegress(res_base, type = "regress", centre = FALSE)
 print(p_reg_raw)
@@ -427,6 +442,7 @@ valid:
 | Bottom-left | Low | Low | Below average on both components |
 
 ```{r plot_quadrant}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 p_quad <- plot_fixedRegress(res_base, type = "quadrant")
 print(p_quad)
@@ -459,6 +475,7 @@ Orange labels = top-right archetypes; blue labels = bottom-left archetypes.
 The same six genotypes are annotated across all panels.
 
 ```{r highlight_default}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 p_hl <- plot_fixedRegress(res_base, type = "quadrant", highlight = "default")
 print(p_hl)
@@ -470,6 +487,7 @@ Pass a character vector of genotype names to annotate specific genotypes of
 interest (shown in green):
 
 ```{r highlight_custom}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 user_genos <- levels(factor(res_base$blues$Variety))[c(1L, 10L, 20L)]
 p_custom   <- plot_fixedRegress(res_base, type  = "quadrant",
@@ -482,6 +500,7 @@ print(p_custom)
 Set `highlight = NULL` to suppress annotation entirely:
 
 ```{r highlight_none}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 p_none <- plot_fixedRegress(res_base, type = "quadrant", highlight = NULL)
 print(p_none)
@@ -495,6 +514,7 @@ For results with many conditioned treatments, `treatments` restricts which
 pairs appear in the plot. Here we show T2 only:
 
 ```{r treatments_filter}
+#| eval: !expr asreml_ok
 #| fig-height: 4
 p_t2 <- plot_fixedRegress(res_base, type = "quadrant", treatments = "T2")
 print(p_t2)
@@ -509,11 +529,13 @@ frame used to build the plot. Column names are standardised to `"Group"` and
 `"Genotype"` regardless of the original column names in `res$blues`:
 
 ```{r return_data_quad}
+#| eval: !expr asreml_ok
 df_quad <- plot_fixedRegress(res_base, type = "quadrant", return_data = TRUE)
 head(df_quad)
 ```
 
 ```{r return_data_reg}
+#| eval: !expr asreml_ok
 df_reg <- plot_fixedRegress(res_base, type = "regress", return_data = TRUE)
 names(df_reg)
 ```
@@ -521,6 +543,7 @@ names(df_reg)
 The returned data frame can be passed directly into any `ggplot2` workflow:
 
 ```{r bespoke}
+#| eval: !expr asreml_ok
 #| fig-height: 4
 # Custom plot: T1 quadrant only, colour by site
 df_t1 <- plot_fixedRegress(res_base, type = "quadrant",
@@ -545,6 +568,7 @@ The ggplot object returned by `plot_fixedRegress()` can also be extended
 directly with `+`:
 
 ```{r extend_plot}
+#| eval: !expr asreml_ok
 #| fig-height: 6
 p_titled <- plot_fixedRegress(res_base, type = "quadrant") +
   ggplot2::ggtitle(
