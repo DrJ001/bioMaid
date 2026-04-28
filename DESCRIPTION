@@ -19,6 +19,7 @@ Depends:
     R (>= 4.1.0)
 Imports:
     ggplot2,
+    knitr,
     stats,
     utils
 Suggests:
@@ -29,9 +30,5 @@ Suggests:
     plotly,
     jsonlite,
     htmlwidgets,
-    knitr,
     pkgdown
-Enhances:
-    asreml,
-    ASExtras4
 Config/testthat/edition: 3
