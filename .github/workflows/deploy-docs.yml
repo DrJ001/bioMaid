@@ -17,6 +17,10 @@ jobs:
   build-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      _R_CHECK_FORCE_SUGGESTS_: false
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,15 +32,17 @@ jobs:
           r-version: release
           use-public-rspm: true
 
-      - name: Install R dependencies
-        run: |
-          install.packages(c("ggplot2", "remotes"))
-          remotes::install_local(".", dependencies = FALSE, quiet = TRUE)
-        shell: Rscript {0}
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::knitr
+            any::rmarkdown
+            asreml=?ignore
+            ASExtras4=?ignore
+          needs: website
 
       - name: Render vignettes
-        run: |
-          quarto render vignettes/
+        run: quarto render vignettes/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
