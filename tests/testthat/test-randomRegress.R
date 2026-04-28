@@ -407,11 +407,13 @@ test_that("randomRegress() custom type runs without error", {
     .asreml_vparams = function(...) G,
     .package        = "biomAid"
   )
-  res <- randomRegress(make_rrm_model(),
-                       Env  = "TSite:Variety",
-                       levs = c("N0","N1","N2"),
-                       type = "custom",
-                       cond = list(N0 = NULL, N1 = "N0", N2 = c("N0","N1")))
+  res <- suppressWarnings(
+    randomRegress(make_rrm_model(),
+                  Env  = "TSite:Variety",
+                  levs = c("N0","N1","N2"),
+                  type = "custom",
+                  cond = list(N0 = NULL, N1 = "N0", N2 = c("N0","N1")))
+  )
   expect_equal(res$type, "custom")
   expect_true(all(c("resp.N1","resp.N2") %in% names(res$blups)))
 })

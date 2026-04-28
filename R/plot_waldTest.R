@@ -146,10 +146,11 @@
     ) +
 
     # CI bars
-    ggplot2::geom_errorbarh(
+    ggplot2::geom_errorbar(
       ggplot2::aes(xmin = CI_lower, xmax = CI_upper),
-      height    = 0.22,
-      linewidth = 0.9
+      width       = 0.22,
+      linewidth   = 0.9,
+      orientation = "y"
     ) +
 
     # Point estimates

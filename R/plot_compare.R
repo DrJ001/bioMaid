@@ -38,31 +38,72 @@
 
 ## Wrap a ggplot in the pc_interactive class.
 ## hover_data is an optional list of per-panel metadata for hover interaction.
+## extra is a list of ggplot2 layers/objects queued via + and applied at print.
 #' @noRd
 .pc_make_interactive <- function(p, hover_data = NULL) {
-  structure(list(plot = p, hover_data = hover_data), class = "pc_interactive")
+  structure(list(plot = p, hover_data = hover_data, extra = list()),
+            class = "pc_interactive")
 }
 
-## Support ggplot2's + operator on pc_interactive objects.
+## Resolve all queued extra layers onto the stored ggplot and return the plot.
+#' @noRd
+.pc_resolve_plot <- function(x) {
+  p <- x$plot
+  for (layer in x$extra)
+    p <- p + layer
+  p
+}
+
+## Add a ggplot2 layer to a pc_interactive object.
 ##
-## ggplot2 >= 4.0.0 migrated to S7 classes and registers an S7 method for
-## the base + operator that returns NULL for non-ggplot left operands.
-## Neither +.pc_interactive nor Ops.pc_interactive can intercept that S7
-## dispatch when the right operand is an S7 gg object.
+## ggplot2 >= 4.0.0 uses an S7 generic for `+` that completely bypasses S3
+## dispatch when the right operand is an S7 gg object, so `+.pc_interactive`
+## cannot intercept `pc_interactive_obj + ggtitle(...)`.  Use pc_add() instead.
 ##
-## The fix: use ggplot2::ggplot_add() directly instead of the + operator
-## on the internal ggplot.  ggplot_add(object, plot, name) is the exported
-## ggplot2 S7 generic that + calls internally, so the effect is identical
-## but the call goes through ggplot2's own API without hitting the dispatch
-## conflict.
+## For convenience, `+.pc_interactive` is still registered so that it works in
+## ggplot2 < 4.0.0.  In ggplot2 >= 4.0.0, `+` silently returns NULL; pc_add()
+## is the reliable cross-version API.
+
+#' Add a ggplot2 Layer to a `pc_interactive` Object
+#'
+#' @description
+#' Queues a ggplot2 layer (theme, scale, title, etc.) to be applied to the
+#' internal ggplot before it is converted to a plotly widget.
+#'
+#' Use `pc_add()` instead of `+` when working with ggplot2 >= 4.0.0, because
+#' ggplot2's S7-based `+` generic intercepts the call before S3 dispatch can
+#' reach `+.pc_interactive`.
+#'
+#' @param x   A `pc_interactive` object returned by
+#'   `plot_compare(..., interactive = TRUE)`.
+#' @param ... One or more ggplot2 layer objects (e.g. [ggplot2::ggtitle()],
+#'   [ggplot2::theme()], [ggplot2::scale_colour_manual()]).
+#'
+#' @return The updated `pc_interactive` object (invisibly), with layers queued
+#'   for application at print / [as_plotly()] time.
+#'
+#' @examples
+#' \dontrun{
+#' p <- plot_compare(res, interactive = TRUE)
+#' p <- pc_add(p, ggplot2::ggtitle("My title"), ggplot2::theme_minimal())
+#' print(p)   # converts to plotly with title and theme applied
+#' }
+#'
+#' @seealso [plot_compare()], [as_plotly()]
 #' @export
-Ops.pc_interactive <- function(e1, e2) {
-  if (.Generic == "+" && inherits(e1, "pc_interactive")) {
-    objectname <- deparse(substitute(e2))
-    e1$plot <- ggplot2::ggplot_add(e2, e1$plot, objectname)
-    return(e1)
-  }
-  stop("Operator '", .Generic, "' is not defined for pc_interactive objects.")
+pc_add <- function(x, ...) {
+  if (!inherits(x, "pc_interactive"))
+    stop("'x' must be a pc_interactive object returned by plot_compare().")
+  layers <- list(...)
+  x$extra <- c(x$extra, layers)
+  invisible(x)
+}
+
+## Keep +.pc_interactive for ggplot2 < 4.0.0 back-compat.
+#' @export
+`+.pc_interactive` <- function(e1, e2) {
+  e1$extra <- c(e1$extra, list(e2))
+  e1
 }
 
 ## Auto-convert to plotly on print.
@@ -72,7 +113,7 @@ print.pc_interactive <- function(x, ...) {
   if (!requireNamespace("plotly", quietly = TRUE))
     stop("Package 'plotly' is required to display an interactive plot. ",
          "Install with: install.packages('plotly')")
-  p_plotly <- plotly::ggplotly(x$plot, tooltip = "text")
+  p_plotly <- plotly::ggplotly(.pc_resolve_plot(x), tooltip = "text")
   if (!is.null(x$hover_data))
     p_plotly <- .pc_add_hover_js(p_plotly, x$hover_data)
   print(p_plotly)
@@ -101,7 +142,7 @@ knit_print.pc_interactive <- function(x, ...) {
          "Install with: install.packages('plotly')")
   if (!requireNamespace("knitr",   quietly = TRUE))
     stop("Package 'knitr' is required for knit_print support.")
-  p_plotly <- plotly::ggplotly(x$plot, tooltip = "text")
+  p_plotly <- plotly::ggplotly(.pc_resolve_plot(x), tooltip = "text")
   if (!is.null(x$hover_data))
     p_plotly <- .pc_add_hover_js(p_plotly, x$hover_data)
   knitr::knit_print(p_plotly, ...)
@@ -158,7 +199,7 @@ as_plotly <- function(x, height = NULL, width = NULL, ...) {
     stop("'x' must be a pc_interactive object returned by plot_compare().")
   if (!requireNamespace("plotly", quietly = TRUE))
     stop("Package 'plotly' is required. Install with: install.packages('plotly')")
-  p_plotly <- plotly::ggplotly(x$plot, tooltip = "text",
+  p_plotly <- plotly::ggplotly(.pc_resolve_plot(x), tooltip = "text",
                                height = height, width = width)
   p_plotly <- .pc_fix_subplot_spacing(p_plotly)
   if (!is.null(x$hover_data))
@@ -1228,12 +1269,12 @@ plot_compare <- function(res,
     }
   }
 
+  if (!is.logical(interactive) || length(interactive) != 1L)
+    stop("'interactive' must be a single logical value.")
+
   if (interactive && type == "errbar")
     message("Note: interactive = TRUE is not supported for type = \"errbar\"; ",
             "returning a static ggplot.")
-
-  if (!is.logical(interactive) || length(interactive) != 1L)
-    stop("'interactive' must be a single logical value.")
   if (interactive && !requireNamespace("plotly", quietly = TRUE))
     stop("Package 'plotly' is required for interactive = TRUE. ",
          "Install with: install.packages('plotly')")

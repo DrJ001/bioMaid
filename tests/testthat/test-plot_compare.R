@@ -433,12 +433,12 @@ test_that("interactive=TRUE returns a pc_interactive object", {
   expect_s3_class(p, "pc_interactive")
 })
 
-test_that("pc_interactive supports + to add ggplot2 layers", {
+test_that("pc_add() adds ggplot2 layers to a pc_interactive object", {
   res <- make_compare_single()
-  p   <- plot_compare(res, interactive = TRUE) +
-           ggplot2::ggtitle("Interactive title")
+  p   <- pc_add(plot_compare(res, interactive = TRUE),
+                ggplot2::ggtitle("Interactive title"))
   expect_s3_class(p, "pc_interactive")
-  expect_equal(p$plot$labels$title, "Interactive title")
+  expect_equal(biomAid:::.pc_resolve_plot(p)$labels$title, "Interactive title")
 })
 
 test_that("interactive=TRUE errors if plotly not available", {
