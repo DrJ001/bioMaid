@@ -1283,9 +1283,9 @@ plot_compare <- function(res,
   if (interactive && type == "errbar")
     message("Note: interactive = TRUE is not supported for type = \"errbar\"; ",
             "returning a static ggplot.")
-  if (interactive && !requireNamespace("plotly", quietly = TRUE))
-    stop("Package 'plotly' is required for interactive = TRUE. ",
-         "Install with: install.packages('plotly')")
+  # plotly availability is checked lazily at print()/knit_print()/as_plotly()
+  # time, not here -- so that pc_interactive objects can be constructed and
+  # tested without plotly installed.
 
   if (!inherits(theme, "theme"))
     stop("'theme' must be a ggplot2 theme object, e.g. ggplot2::theme_bw().")

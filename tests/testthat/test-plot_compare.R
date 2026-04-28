@@ -441,12 +441,14 @@ test_that("pc_add() adds ggplot2 layers to a pc_interactive object", {
   expect_equal(biomAid:::.pc_resolve_plot(p)$labels$title, "Interactive title")
 })
 
-test_that("interactive=TRUE errors if plotly not available", {
+test_that("interactive=TRUE errors at print if plotly not available", {
   # Skip if plotly is installed — we can only test the error path when absent
   skip_if(requireNamespace("plotly", quietly = TRUE),
           "plotly is installed; cannot test absence error")
   res <- make_compare_single()
-  expect_error(plot_compare(res, interactive = TRUE), "plotly.*required")
+  p   <- plot_compare(res, interactive = TRUE)
+  expect_s3_class(p, "pc_interactive")        # construction succeeds without plotly
+  expect_error(print(p), "plotly.*required")  # error fires at print time
 })
 
 test_that("interactive: non-logical stops", {
