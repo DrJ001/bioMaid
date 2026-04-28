@@ -250,6 +250,7 @@ among the nitrogen treatments. Setting `comp = "pairwise"` generates the full
 contrast matrix automatically.
 
 ```{r pairwise}
+#| eval: !expr asreml_ok
 res1 <- waldTest(
   pred,
   cc = list(
@@ -277,6 +278,7 @@ to label it. Here we test HighN minus Control using
 $\mathbf{c} = (-1,\; 0,\; 0,\; 1)^\top$ â€” one element per level in `coef` order.
 
 ```{r manual_vector}
+#| eval: !expr asreml_ok
 res2 <- waldTest(
   pred,
   cc = list(
@@ -304,6 +306,7 @@ multiple specific comparisons in one call. Here we fit three polynomial contrast
 across the four equally-spaced nitrogen levels.
 
 ```{r manual_matrix}
+#| eval: !expr asreml_ok
 # Orthogonal polynomial contrasts for 4 equally-spaced levels
 C_poly <- matrix(
   c(-3, -1,  1,  3,   # linear trend
@@ -343,6 +346,7 @@ Here we test whether the three non-Control treatment effects are jointly zero â€
 i.e. does nitrogen application have any effect at all?
 
 ```{r zero_test}
+#| eval: !expr asreml_ok
 res4 <- waldTest(
   pred,
   cc = list(
@@ -368,6 +372,7 @@ Both test types can be combined in a single `cc` list. Results are returned
 in separate `$Contrasts` and `$Zero` slots.
 
 ```{r combined}
+#| eval: !expr asreml_ok
 res5 <- waldTest(
   pred,
   cc = list(
@@ -395,6 +400,7 @@ the `by` argument runs the same `cc` specification independently within each
 group. The grouping column is prepended to both output tables.
 
 ```{r by_group_test}
+#| eval: !expr asreml_ok
 res6 <- waldTest(
   pred3,
   cc = list(
@@ -437,6 +443,7 @@ gives better-calibrated p-values in small samples. Set `test = "F"` and supply
 `df_error`.
 
 ```{r f_test}
+#| eval: !expr asreml_ok
 res7 <- waldTest(
   pred,
   cc       = list(list(coef = treatments, type = "con", comp = "pairwise")),
@@ -460,6 +467,7 @@ positive is inflated. The `adjust` argument applies `p.adjust()` across all
 contrasts within each group.
 
 ```{r adjustment}
+#| eval: !expr asreml_ok
 # Bonferroni
 res_bon <- waldTest(pred,
                     cc     = list(list(coef = treatments, type = "con",
@@ -496,6 +504,7 @@ as evidence strengthens. The raw p-value is printed beside each row.
 ### Basic forest plot
 
 ```{r forest_basic}
+#| eval: !expr asreml_ok
 #| fig-height: 5
 p1 <- plot_waldTest(res1)
 print(p1)
@@ -512,6 +521,7 @@ one panel per group with free y-scales, making it easy to compare effect sizes
 across environments.
 
 ```{r forest_facet}
+#| eval: !expr asreml_ok
 #| fig-height: 9
 p_facet <- plot_waldTest(res6, facet = TRUE)
 print(p_facet)
@@ -524,6 +534,7 @@ separator lines between groups. Useful for compact side-by-side comparison when
 the number of contrasts per group is small.
 
 ```{r forest_nofacet}
+#| eval: !expr asreml_ok
 #| fig-height: 7
 p_single <- plot_waldTest(res6, facet = FALSE)
 print(p_single)
@@ -535,6 +546,7 @@ print(p_single)
 break between grey (non-significant) and the warm gradient.
 
 ```{r forest_ci99}
+#| eval: !expr asreml_ok
 #| fig-height: 5
 # 99% CI arms; stricter significance threshold
 p_99 <- plot_waldTest(res1, ci_level = 0.99, alpha = 0.01)
@@ -547,6 +559,7 @@ print(p_99)
 plot, giving full control for bespoke customisation.
 
 ```{r return_data}
+#| eval: !expr asreml_ok
 df <- plot_waldTest(res1, return_data = TRUE)
 df[, c("label", "Estimate", "CI_lower", "CI_upper", "P.Value",
        "neg_log10_p", "significant", "p_label")]
@@ -555,6 +568,7 @@ df[, c("label", "Estimate", "CI_lower", "CI_upper", "P.Value",
 The ggplot object can be extended with `+` in the usual way:
 
 ```{r bespoke}
+#| eval: !expr asreml_ok
 #| fig-height: 5
 p_custom <- plot_waldTest(res1) +
   ggplot2::ggtitle("Nitrogen treatment contrasts",
