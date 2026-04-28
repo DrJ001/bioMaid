@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Julian Taylor">
-<meta name="dcterms.date" content="2026-04-27">
+<meta name="dcterms.date" content="2026-04-28">
 
 <title>biomAid - Wald Tests on Fixed-Effect Contrasts</title>
 <style>
@@ -4689,7 +4689,7 @@ body {font-family: 'Source Serif 4', Georgia, serif;font-size: 1.02rem;line-heig
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">April 27, 2026</p>
+      <p class="date">April 28, 2026</p>
     </div>
   </div>
   
@@ -4875,7 +4875,7 @@ W = \hat{\boldsymbol{\tau}}^\top \mathbf{Z}^\top
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>Row        <span class="ot">&lt;-</span> <span class="fu">factor</span>(dat<span class="sc">$</span>Row)</span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>dat<span class="sc">$</span>Column     <span class="ot">&lt;-</span> <span class="fu">factor</span>(dat<span class="sc">$</span>Column)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="cell" data-hash="waldTest_cache/html/fit_model_0b2cfaa80c1b1c8164d29801bd92b109">
+<div class="cell" data-hash="waldTest_cache/html/fit_model_7ed0b1cc34e2a092b6053cc6e2d67978">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">asreml.options</span>(<span class="at">trace =</span> <span class="cn">FALSE</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">asreml</span>(</span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  yield    <span class="sc">~</span> Treatment <span class="sc">*</span> Site,</span>
@@ -4887,7 +4887,7 @@ W = \hat{\boldsymbol{\tau}}^\top \mathbf{Z}^\top
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">update</span>(model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Treatment BLUEs are obtained by predicting the <code>Treatment</code> term with a full prediction error variance–covariance matrix:</p>
-<div class="cell" data-hash="waldTest_cache/html/pred_treatment_ce4b6032df29333fb84df7c1a3f0eea1">
+<div class="cell" data-hash="waldTest_cache/html/pred_treatment_cec3c5388761a4701896d2451b4330a6">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, <span class="at">classify =</span> <span class="st">&quot;Treatment&quot;</span>, <span class="at">vcov =</span> <span class="cn">TRUE</span>)</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>pred<span class="sc">$</span>pvals[, <span class="fu">c</span>(<span class="st">&quot;Treatment&quot;</span>, <span class="st">&quot;predicted.value&quot;</span>, <span class="st">&quot;std.error&quot;</span>)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -4899,7 +4899,7 @@ W = \hat{\boldsymbol{\tau}}^\top \mathbf{Z}^\top
 </div>
 </div>
 <p>For the by-group examples (Example 6) we also obtain predictions for every Treatment × Site combination:</p>
-<div class="cell" data-hash="waldTest_cache/html/pred_treatment_site_93fc30b617e877abe655c93b960bd75d">
+<div class="cell" data-hash="waldTest_cache/html/pred_treatment_site_cfd87a6048aeccc7cb624db766f6e7e2">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>pred3 <span class="ot">&lt;-</span> <span class="fu">predict</span>(model, <span class="at">classify =</span> <span class="st">&quot;Treatment:Site&quot;</span>, <span class="at">vcov =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <hr>

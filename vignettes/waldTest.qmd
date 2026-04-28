@@ -28,7 +28,8 @@ execute:
 #| include: false
 library(biomAid)
 library(ggplot2)
-library(asreml)
+asreml_ok <- requireNamespace("asreml", quietly = TRUE)
+if (asreml_ok) library(asreml)
 ```
 
 ---
@@ -209,6 +210,7 @@ dat$Column     <- factor(dat$Column)
 ```{r fit_model}
 #| cache: true
 #| results: hide
+#| eval: !expr asreml_ok
 asreml.options(trace = FALSE)
 model <- asreml(
   yield    ~ Treatment * Site,
@@ -225,6 +227,7 @@ prediction error variance–covariance matrix:
 
 ```{r pred_treatment}
 #| cache: true
+#| eval: !expr asreml_ok
 pred <- predict(model, classify = "Treatment", vcov = TRUE)
 pred$pvals[, c("Treatment", "predicted.value", "std.error")]
 ```
@@ -234,6 +237,7 @@ Treatment × Site combination:
 
 ```{r pred_treatment_site}
 #| cache: true
+#| eval: !expr asreml_ok
 pred3 <- predict(model, classify = "Treatment:Site", vcov = TRUE)
 ```
 
