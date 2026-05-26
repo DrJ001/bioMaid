@@ -187,7 +187,7 @@ test_that(".parse_met_formula: single-env vm() keeps wrapper in only_term", {
   p <- biomAid:::.parse_met_formula(m)
   expect_null(p$group_var)
   expect_equal(p$by_var,    "Variety")
-  expect_equal(p$only_term, "vm(Variety,giv1)")  # wrapper kept; space stripped
+  expect_equal(p$only_term, "vm(Variety, giv1)")  # wrapper kept; original spacing preserved
   expect_equal(p$classify,  "Variety")
 })
 
@@ -211,7 +211,7 @@ test_that(".parse_met_formula: vm wrapper kept in only_term, bare name in classi
   m <- make_acc_model("~ fa(Env, 2):vm(Variety, giv1)")
   p <- biomAid:::.parse_met_formula(m)
   expect_equal(p$by_var,    "Variety")
-  expect_equal(p$only_term, "fa(Env, 2):vm(Variety,giv1)")  # wrapper kept; space stripped
+  expect_equal(p$only_term, "fa(Env, 2):vm(Variety, giv1)")  # wrapper kept; original spacing preserved
   expect_equal(p$classify,  "Env:Variety")
 })
 
@@ -239,7 +239,7 @@ test_that(".parse_acc_term: multi-env FA with id() gives correct classify and on
 test_that(".parse_acc_term: multi-env FA with vm() keeps wrapper in only", {
   p <- biomAid:::.parse_acc_term("fa(Site, 2):vm(Variety, giv1)")
   expect_equal(p$by_var,     "Variety")
-  expect_equal(p$only_term,  "fa(Site, 2):vm(Variety,giv1)")
+  expect_equal(p$only_term,  "fa(Site, 2):vm(Variety, giv1)")  # original spacing preserved
   expect_equal(p$classify,   "Site:Variety")
 })
 
@@ -255,7 +255,7 @@ test_that(".parse_acc_term: multi-env non-FA with id() strips wrapper", {
 test_that(".parse_acc_term: multi-env non-FA with vm() keeps wrapper in only", {
   p <- biomAid:::.parse_acc_term("corgh(Site):vm(Variety, giv1)")
   expect_equal(p$by_var,     "Variety")
-  expect_equal(p$only_term,  "Site:vm(Variety,giv1)")
+  expect_equal(p$only_term,  "Site:vm(Variety, giv1)")  # original spacing preserved
   expect_equal(p$classify,   "Site:Variety")
 })
 
@@ -271,7 +271,7 @@ test_that(".parse_acc_term: single-env vm() keeps wrapper in only", {
   p <- biomAid:::.parse_acc_term("vm(Variety, giv1)")
   expect_null(p$group_var)
   expect_equal(p$by_var,     "Variety")
-  expect_equal(p$only_term,  "vm(Variety,giv1)")
+  expect_equal(p$only_term,  "vm(Variety, giv1)")  # original spacing preserved
   expect_equal(p$classify,   "Variety")
 })
 
