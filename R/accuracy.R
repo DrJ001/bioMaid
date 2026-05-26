@@ -309,19 +309,23 @@ accuracy <- function(model,
 #' @noRd
 .parse_acc_term <- function(term_str) {
 
-  term_str <- gsub("\\s+", "", term_str)   # strip whitespace
-
-  cp <- .top_colon(term_str)
+  # Preserve original spacing before stripping whitespace.
+  # ASReml-R's predict(only=) must match term labels exactly — including spaces
+  # inside wrappers such as vm(Variety, giv1).  We use the stripped string only
+  # for parsing (field names, structure detection), and the original for only=.
+  cp_orig <- .top_colon(term_str)
 
   # ---- Single-environment (no top-level colon) ----------------------------
-  if (is.na(cp)) {
-    rhs <- term_str
+  if (is.na(cp_orig)) {
+    rhs_orig <- term_str                         # preserve original spacing
+    term_str <- gsub("\\s+", "", term_str)
+    rhs      <- term_str
     if (grepl("^id\\(", rhs)) {
       by_var   <- .inside(rhs)
       only_rhs <- by_var
     } else if (grepl("^[A-Za-z][A-Za-z0-9_]*\\(", rhs)) {
       by_var   <- trimws(strsplit(.inside(rhs), ",")[[1L]][1L])
-      only_rhs <- rhs
+      only_rhs <- rhs_orig                       # use original spacing for only=
     } else {
       by_var   <- rhs
       only_rhs <- rhs
@@ -334,6 +338,10 @@ accuracy <- function(model,
   }
 
   # ---- Multi-environment --------------------------------------------------
+  rgt_orig <- substr(term_str, cp_orig + 1L, nchar(term_str))  # rhs original spacing
+  term_str  <- gsub("\\s+", "", term_str)
+  cp        <- .top_colon(term_str)
+
   lft  <- substr(term_str, 1L, cp - 1L)
   rgt  <- substr(term_str, cp + 1L, nchar(term_str))
   type <- sub("\\(.*", "", lft)
@@ -347,13 +355,13 @@ accuracy <- function(model,
     suppressWarnings(as.integer(trimws(strsplit(.inside(lft), ",")[[1L]][2L])))
   else NULL
 
-  # Right-hand side: id() stripped; vm()/ide() kept; bare used as-is
+  # Right-hand side: id() stripped; vm()/ide() kept (with original spacing); bare as-is
   if (grepl("^id\\(", rgt)) {
     by_var   <- .inside(rgt)
     only_rhs <- by_var
   } else if (grepl("^[A-Za-z][A-Za-z0-9_]*\\(", rgt)) {
     by_var   <- trimws(strsplit(.inside(rgt), ",")[[1L]][1L])
-    only_rhs <- rgt
+    only_rhs <- rgt_orig                         # use original spacing for only=
   } else {
     by_var   <- rgt
     only_rhs <- rgt
@@ -381,12 +389,17 @@ accuracy <- function(model,
                   error = function(e)
                     stop("[accuracy] Cannot read model$call$random."))
 
-  rnd   <- gsub("\\s+", "", sub("^~\\s*", "", raw))
+  # Strip only the leading "~" and any surrounding whitespace, then split on
+  # top-level "+" operators.  Do NOT collapse all internal whitespace — we need
+  # to preserve spaces inside wrappers (e.g. "vm(Variety, giv1)") so that
+  # the only= string passed to predict.asreml() matches the stored term label.
+  rnd   <- trimws(sub("^[[:space:]]*~[[:space:]]*", "", raw))
   terms <- .split_top(rnd, "+")
+  terms <- trimws(terms)   # trim whitespace around each top-level term
 
   # Prefer MET terms (supported multi-env variance structures); fall back to
   # the first term for single-environment models.
-  met      <- grep("^(fa|diag|corh|corgh|us)\\(", terms, value = TRUE)
+  met      <- grep("^(fa|diag|corh|corgh|us)[[:space:]]*[(]", terms, value = TRUE)
   term_str <- if (length(met)) met[1L] else terms[1L]
 
   .parse_acc_term(term_str)

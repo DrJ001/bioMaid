@@ -234,6 +234,34 @@ plot_accuracy <- function(res,
   do.call(rbind, c(out, make.row.names = FALSE))
 }
 
+# Collapse a by_variety accuracy() data frame to the group-level format that
+# .pa_long_grp() expects (mean_acc, sd_acc, n_vars, gen.H2).
+# Returns the input unchanged if it is already group-level (no 'variety' col).
+.pa_bv_to_grp <- function(d) {
+  if (!"variety" %in% names(d)) return(d)
+  out <- list()
+  if ("accuracy" %in% names(d)) {
+    agg_m  <- aggregate(accuracy ~ group, data = d, FUN = mean, na.rm = TRUE)
+    agg_s  <- aggregate(accuracy ~ group, data = d, FUN = sd,   na.rm = TRUE)
+    agg_n  <- aggregate(accuracy ~ group, data = d,
+                        FUN = function(x) sum(!is.na(x)))
+    grp_df <- data.frame(
+      group    = agg_m$group,
+      mean_acc = agg_m$accuracy,
+      sd_acc   = agg_s$accuracy,
+      n_vars   = agg_n$accuracy,
+      stringsAsFactors = FALSE
+    )
+    if ("gen.H2" %in% names(d)) {
+      h2 <- aggregate(gen.H2 ~ group, data = d,
+                      FUN = function(x) x[1L])
+      grp_df <- merge(grp_df, h2, by = "group")
+    }
+    out <- grp_df
+  }
+  out
+}
+
 # Set group factor levels ordered by mean value (ascending -> best at top of y)
 # Uses the first metric_label present if multiple exist.
 .pa_order_groups <- function(d) {
@@ -563,6 +591,9 @@ plot_accuracy <- function(res,
 
 .pa_dumbbell <- function(res, res2, metric, label1, label2, theme, return_data) {
 
+  res  <- .pa_bv_to_grp(res)
+  res2 <- .pa_bv_to_grp(res2)
+
   d1         <- .pa_long_grp(res,  metric); d1$model_label <- label1
   d2         <- .pa_long_grp(res2, metric); d2$model_label <- label2
   dall       <- rbind(d1, d2)
@@ -769,6 +800,8 @@ plot_accuracy <- function(res,
   }
 
   # ---- Two-model comparison mode --------------------------------------------
+  res  <- .pa_bv_to_grp(res)
+  res2 <- .pa_bv_to_grp(res2)
   d1 <- .pa_long_grp(res,  metric)
   d2 <- .pa_long_grp(res2, metric)
 

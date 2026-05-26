@@ -72,12 +72,23 @@
 #' @noRd
 .parse_rreg_term <- function(term) {
 
-  term <- gsub("\\s+", "", term)   # strip all whitespace
-
-  # Locate the first ":" at parenthesis depth 0
-  cp <- .top_colon(term)
-  if (is.na(cp))
+  # Locate the first ":" at parenthesis depth 0 *before* stripping whitespace,
+  # so that we can preserve the original right-hand side for only_term.
+  # ASReml-R's predict(only=) must match the term label exactly as stored in
+  # the model's random formula — including spaces inside wrappers such as
+  # vm(Variety, giv1).  Stripping all whitespace first causes only_term to
+  # contain "vm(Variety,giv1)" (no space), which ASReml-R cannot match,
+  # making vm() and ide() indistinguishable.
+  cp_orig <- .top_colon(term)
+  if (is.na(cp_orig))
     stop("'term' must be an interaction of the form 'struct(Group):Variety' or 'struct(Group):wrapper(Variety,...)'.")
+
+  rgt_orig <- substr(term, cp_orig + 1L, nchar(term))   # rhs with original spacing
+
+  term <- gsub("\\s+", "", term)   # strip all whitespace (for parsing only)
+
+  # Locate the colon again in the stripped string (position may shift)
+  cp <- .top_colon(term)
 
   lft <- substr(term, 1L,       cp - 1L)
   rgt <- substr(term, cp + 1L,  nchar(term))
@@ -99,10 +110,13 @@
   } else NULL
 
   # ---- Right-hand side: Variety | vm(Variety,...) | ide(Variety) ----------
-  by_raw     <- rgt
+  # by_raw preserves the original spacing so only_term matches ASReml's stored
+  # term label exactly (e.g. "vm(Variety, giv1)" not "vm(Variety,giv1)").
+  by_raw     <- rgt_orig
   by_wrapper <- NULL
 
-  # Check for a wrapping function: any "word(" pattern
+  # Check for a wrapping function: any "word(" pattern (use stripped rgt for
+  # parsing — positional logic is simpler on whitespace-free strings)
   if (grepl("^[A-Za-z][A-Za-z0-9_]*\\(", rgt)) {
     by_wrapper <- sub("\\(.*", "", rgt)
     by_var     <- trimws(strsplit(.inside(rgt), ",")[[1L]][1L])
@@ -116,6 +130,8 @@
   # any vm() / ide() wrapper on the right — ASReml-R requires it when present.
   # For FA:   only = "fa(Group, k):rhs"  (space after comma required by ASReml)
   # For rest: only = "Group:rhs"
+  # IMPORTANT: by_raw retains original spacing so the string matches the term
+  # label in the model's random formula exactly.
   only_term <- if (struct == "fa" && !is.null(n_fa))
     sprintf("fa(%s, %d):%s", group_var, n_fa, by_raw)
   else
@@ -353,16 +369,37 @@ randomRegress <- function(model, term = "us(TSite):Variety", levs = NULL,
   vnam  <- p$by_var       # e.g. "Variety"  (bare, wrappers stripped)
   struct <- p$struct      # e.g. "us", "fa", "corgh", "corh", "diag"
 
-  # Match the term in the model's random formula using the parsed components
-  # (guards against whitespace differences between user input and R's deparsing)
+  # Match the term in the model's random formula using the parsed components.
+  # We match on struct(Group) first, then verify the RHS wrapper agrees — this
+  # prevents silently using the wrong model term when the user supplies, e.g.,
+  # "us(TSite):ide(Variety)" against a model fitted with "us(TSite):vm(Variety, giv1)".
+  # Without the RHS check both calls pass validation, use the same G-matrix key,
+  # and ASReml silently falls back to the same predictions, making vm() and ide()
+  # look identical.
+  formula_terms <- attr(terms(model$formulae$random), "term.labels")
   rterm <- grep(
     paste0(struct, "\\(", enam),
-    attr(terms(model$formulae$random), "term.labels"),
+    formula_terms,
     value = TRUE
   )
   if (length(rterm) == 0L)
     stop("Cannot find a term matching '", term, "' in the model's random formula.")
   rterm <- rterm[1L]
+
+  # Validate that the RHS wrapper in the supplied term matches the model formula.
+  # Strip whitespace from both sides for a robust comparison.
+  rterm_stripped <- gsub("\\s+", "", rterm)
+  rterm_cp       <- .top_colon(rterm_stripped)
+  rterm_rhs      <- if (!is.na(rterm_cp))
+    substr(rterm_stripped, rterm_cp + 1L, nchar(rterm_stripped))
+  else rterm_stripped
+  user_rhs <- gsub("\\s+", "", p$by_raw)
+
+  if (!identical(rterm_rhs, user_rhs))
+    stop("Term mismatch: the model formula contains '", rterm, "' but the ",
+         "supplied 'term' has a different right-hand side ('", p$by_raw, "'). ",
+         "Check that the wrapper on the variety factor (e.g. vm(), ide(), or none) ",
+         "matches the term as it was specified in the model's random formula.")
 
   # ---- Extract BLUPs and G-matrix ----------------------------------------
   if (struct == "fa") {

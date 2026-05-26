@@ -312,9 +312,9 @@ test_that(".parse_rreg_term: diag structure parses correctly", {
     expect_equal(p$struct,      "us")
     expect_equal(p$by_var,      "Variety")
     expect_equal(p$by_wrapper,  "vm")
-    expect_equal(p$by_raw,      "vm(Variety,giv1)")   # whitespace stripped
-    expect_equal(p$only_term,   "TSite:vm(Variety,giv1)")  # wrapper kept in only
-    expect_equal(p$classify,    "TSite:Variety")           # bare name in classify
+    expect_equal(p$by_raw,      "vm(Variety, giv1)")   # original spacing preserved
+    expect_equal(p$only_term,   "TSite:vm(Variety, giv1)")  # spacing preserved for ASReml match
+    expect_equal(p$classify,    "TSite:Variety")            # bare name in classify
   })
 
   test_that(".parse_rreg_term: ide wrapper on by-variable", {
@@ -1111,7 +1111,7 @@ test_that("vm wrapper: randomRegress parses bare Variety name correctly", {
     p <- biomAid:::.parse_rreg_term("us(TSite):vm(Variety, giv1)")
     expect_equal(p$by_wrapper, "vm")
     expect_equal(p$by_var,     "Variety")
-    expect_equal(p$only_term,  "TSite:vm(Variety,giv1)")
+    expect_equal(p$only_term,  "TSite:vm(Variety, giv1)")  # spacing preserved for ASReml match
     expect_equal(p$classify,   "TSite:Variety")
   })
 
@@ -1149,3 +1149,52 @@ test_that("ide wrapper: randomRegress parses bare Variety name correctly", {
     expect_equal(p$by_var,     "Variety")
     expect_equal(p$only_term,  "TSite:ide(Variety)")
   })
+
+# ---------------------------------------------------------------------------
+# F6. RHS wrapper mismatch — vm() term supplied against ide() model and vice
+#     versa.  Previously the rterm grep matched on struct(Group) only, so a
+#     mismatched wrapper (e.g. ide vs vm) silently passed validation, used the
+#     same G-matrix key ("TSite:Variety" bare), and ASReml-R silently ignored
+#     the wrong only= string, making vm() and ide() return identical results.
+# ---------------------------------------------------------------------------
+
+test_that("RHS mismatch: ide() term against vm() model errors with informative message", {
+  # Model was fitted with vm() wrapper
+  frm <- stats::as.formula("~ us(TSite):vm(Variety, giv1)")
+  m   <- list(formulae = list(random = frm), call = list())
+  class(m) <- "asreml"
+
+  expect_error(
+    randomRegress(m,
+                  term = "us(TSite):ide(Variety)",   # wrong wrapper
+                  levs = c("N0", "N1", "N2")),
+    "Term mismatch"
+  )
+})
+
+test_that("RHS mismatch: vm() term against ide() model errors with informative message", {
+  # Model was fitted with ide() wrapper
+  frm <- stats::as.formula("~ us(TSite):ide(Variety)")
+  m   <- list(formulae = list(random = frm), call = list())
+  class(m) <- "asreml"
+
+  expect_error(
+    randomRegress(m,
+                  term = "us(TSite):vm(Variety, giv1)",   # wrong wrapper
+                  levs = c("N0", "N1", "N2")),
+    "Term mismatch"
+  )
+})
+
+test_that("RHS mismatch: vm() term against bare-Variety model errors", {
+  frm <- stats::as.formula("~ us(TSite):Variety")
+  m   <- list(formulae = list(random = frm), call = list())
+  class(m) <- "asreml"
+
+  expect_error(
+    randomRegress(m,
+                  term = "us(TSite):vm(Variety, giv1)",
+                  levs = c("N0", "N1", "N2")),
+    "Term mismatch"
+  )
+})
