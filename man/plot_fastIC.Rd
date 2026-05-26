@@ -9,6 +9,7 @@ plot_fastIC(
   type = c("fast", "biplot", "CVE", "VAF", "iclass", "OP.pairs", "OP.variety"),
   highlight = "default",
   n_highlight = 3L,
+  biplot_factors = c(1L, 2L),
   theme = ggplot2::theme_bw(),
   return_data = FALSE,
   ...
@@ -28,11 +29,19 @@ plot_fastIC(
 \item{n_highlight}{Positive integer. Maximum number of genotypes to
 highlight automatically when \code{highlight = "default"}. Default \code{3L}.}
 
+\item{biplot_factors}{Integer vector of length 2 giving the FA factor
+indices to use as the x- and y-axes of the biplot. Default \code{c(1L, 2L)}.
+Both values must be distinct and within \code{1:k} where \code{k} is the number of
+FA factors in \code{res}.  Useful when \code{ic.num >= 3} and iClass separation
+involves a third factor that is invisible in the default Factor 1 vs
+Factor 2 view — e.g. \code{biplot_factors = c(1L, 3L)} to reveal Factor 3
+separation.  Ignored for all plot types other than \code{"biplot"}.}
+
 \item{theme}{A complete ggplot2 theme object. Default
 \code{\link[ggplot2:ggtheme]{ggplot2::theme_bw()}}.}
 
-\item{return_data}{Logical. If \code{TRUE}, returns a list with elements \code{plot}
-(the ggplot object) and \code{data} (the underlying tidy data). Default
+\item{return_data}{Logical. If \code{TRUE}, returns a list with elements
+\code{plot} (the ggplot object) and \code{data} (the underlying tidy data). Default
 \code{FALSE}.}
 
 \item{...}{Reserved for future use; currently ignored.}
@@ -56,7 +65,9 @@ containing the plot and the underlying tidy data.
 \item{\code{"fast"}}{Scatter of global Overall Performance (\code{global_op}) vs
 global stability (\code{global_stab}) with quadrant annotations.}
 \item{\code{"biplot"}}{Factor-analysis biplot with genotype score points and
-environment loading arrows (Factors 1 & 2).  Requires k \eqn{\geq} 2.}
+environment loading arrows.  Default axes are Factors 1 \& 2; use
+\code{biplot_factors} to display any two factor axes.  Requires k
+\eqn{\geq} 2.}
 \item{\code{"CVE"}}{Diverging-colour heatmap of the Common Variety Effect
 (genotype \eqn{\times} environment), ordered by iClass then
 first-factor loading.}
