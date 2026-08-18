@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Julian Taylor">
-<meta name="dcterms.date" content="2026-05-08">
+<meta name="dcterms.date" content="2026-08-11">
 
 <title>biomAid - Random Regression of Treatment BLUPs from Multi-Treatment MET Analyses</title>
 <style>
@@ -4752,7 +4752,8 @@ opacity: 0.92;
   <li><a href="#the-g-matrix" id="toc-the-g-matrix" class="nav-link" data-scroll-target="#the-g-matrix">The G-matrix</a></li>
   <li><a href="#allowable-asreml-r-specifications" id="toc-allowable-asreml-r-specifications" class="nav-link" data-scroll-target="#allowable-asreml-r-specifications">Allowable ASReml-R specifications</a></li>
   <li><a href="#example-term-strings" id="toc-example-term-strings" class="nav-link" data-scroll-target="#example-term-strings">Example <code>term</code> strings</a></li>
-  <li><a href="#conditional-decomposition" id="toc-conditional-decomposition" class="nav-link" data-scroll-target="#conditional-decomposition">Conditional decomposition</a></li>
+  <li><a href="#two-treatments" id="toc-two-treatments" class="nav-link" data-scroll-target="#two-treatments">Two treatments</a></li>
+  <li><a href="#universal-conditional-decomposition" id="toc-universal-conditional-decomposition" class="nav-link" data-scroll-target="#universal-conditional-decomposition">Universal conditional decomposition</a></li>
   <li><a href="#the-transformation-matrix" id="toc-the-transformation-matrix" class="nav-link" data-scroll-target="#the-transformation-matrix">The transformation matrix</a></li>
   <li><a href="#conditioning-schemes" id="toc-conditioning-schemes" class="nav-link" data-scroll-target="#conditioning-schemes">Conditioning schemes</a></li>
   </ul></li>
@@ -4811,7 +4812,7 @@ opacity: 0.92;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">May 8, 2026</p>
+      <p class="date">August 11, 2026</p>
     </div>
   </div>
   
@@ -4828,7 +4829,7 @@ opacity: 0.92;
 <h2 class="anchored" data-anchor-id="overview">Overview</h2>
 <p><code>randomRegress()</code> decomposes variety BLUPs from a multi-treatment, multi-environment trial into two biologically interpretable components:</p>
 <ul>
-<li><strong>Efficiency</strong> — a variety’s genetic value under the baseline (typically low-input) treatment.</li>
+<li><strong>Efficiency</strong> — a variety’s genetic value under the baseline (typically low-input or control) treatment.</li>
 <li><strong>Responsiveness (or Tolerance)</strong> — a variety’s capacity to respond genetically to the application of a treatment.</li>
 </ul>
 <p>The decomposition is derived from the <strong>G-matrix</strong> (genetic variance–covariance matrix across Treatment × Site combinations) using Gaussian conditional distribution theory. It generalises naturally from two treatments to any number, with four built-in conditioning schemes used in this function.</p>
@@ -4839,10 +4840,9 @@ opacity: 0.92;
 <h2 class="anchored" data-anchor-id="mathematical-framework">Mathematical Framework</h2>
 <section id="the-g-matrix" class="level3">
 <h3 class="anchored" data-anchor-id="the-g-matrix">The G-matrix</h3>
-<p>For full specification of the multi-treatment, multi-environment LMM see the <a href="simTrialData.html">Simulating Multi-Environment Trials</a> vignette.</p>
-<p>Let <span class="math inline">\hat{\mathbf{u}}</span> be the vector of variety BLUPs stacked across all <span class="math inline">p = T \times S</span> groups, where <span class="math inline">T</span> is the number of treatments and <span class="math inline">S</span> the number of sites. The genetic variance–covariance structure is described by the <strong>G-matrix</strong>:</p>
+<p>For full specification of the multi-treatment, multi-environment LMM used in this vignette see the <a href="simTrialData.html">Simulating Multi-Environment Trials</a> vignette. This vignette specifically discusses partitioning of <span class="math inline">\tilde{\mathbf{u}}</span>, a vector of variety BLUPs from the fitted multi-treatment, multi-environment LMM that are stacked across all <span class="math inline">p = T \times S</span> groups, where <span class="math inline">T</span> is the number of treatments and <span class="math inline">S</span> the number of sites. For ease of notation we have removed the use of tilde throughout the remainder of this mathematical framework. Let the genetic variance–covariance structure of these BLUPs be described by the <strong>G-matrix</strong>:</p>
 <p><span class="math display">
-\operatorname{Var}(\hat{\mathbf{u}}) = \mathbf{G} \otimes \mathbf{I}_n,
+\operatorname{Var}(\mathbf{u}) = \mathbf{G} \otimes \mathbf{I}_n,
 </span></p>
 <p>where <span class="math inline">\mathbf{I}_n</span> is the <span class="math inline">n \times n</span> identity over varieties and the <span class="math inline">p \times p</span> G-matrix has a natural <span class="math inline">S \times S</span> block structure, with each block being <span class="math inline">T \times T</span>:</p>
 <p><span class="math display">
@@ -4868,8 +4868,7 @@ opacity: 0.92;
 </section>
 <section id="allowable-asreml-r-specifications" class="level3">
 <h3 class="anchored" data-anchor-id="allowable-asreml-r-specifications">Allowable ASReml-R specifications</h3>
-<p>To obtain the <span class="math inline">\mathbf{G}</span> matrix <code>randomRegress()</code> allows various specifications of the Treatment <span class="math inline">\times</span> Site <span class="math inline">\times</span> Variety interaction through its flexible <code>term</code> argument.</p>
-<p>Supported ASReml-R covariance/correlation structures are:</p>
+<p>ASReml-R allows various specifications of the Treatment <span class="math inline">\times</span> Site <span class="math inline">\times</span> Variety interaction. Once a model is fitted the <code>term</code> argument in <code>randomRegress()</code> can used to specify the Treatment <span class="math inline">\times</span> Site <span class="math inline">\times</span> Variety interaction term. Supported ASReml-R covariance/correlation structures are:</p>
 <table class="table">
 <thead>
 <tr class="header">
@@ -4899,14 +4898,33 @@ opacity: 0.92;
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">randomRegress</span>(model, <span class="at">term =</span> <span class="st">&quot;corh(Site):Variety&quot;</span>, ...)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <hr>
 </section>
-<section id="conditional-decomposition" class="level3">
-<h3 class="anchored" data-anchor-id="conditional-decomposition">Conditional decomposition</h3>
-<p>Conditioning is performed <strong>within sites only</strong>. For a given site <span class="math inline">s</span>, the <span class="math inline">T</span> treatment groups are indexed locally as <span class="math inline">j = 1, \ldots, T</span>. The scalar <span class="math inline">G_{jj}</span> is the marginal genetic variance for treatment <span class="math inline">j</span> at site <span class="math inline">s</span>, i.e. the <span class="math inline">(j,j)</span> element of the within-site diagonal block <span class="math inline">\mathbf{G}_{ss}</span>. The sub-vector <span class="math inline">\mathbf{G}_{A_j j}</span> contains the covariances between treatment <span class="math inline">j</span> and the conditioning set <span class="math inline">A_j \subseteq \{1,\ldots,T\} \setminus \{j\}</span>, drawn from the same block <span class="math inline">\mathbf{G}_{ss}</span>.</p>
-<p>With this specification the <strong>multivariate conditional normal</strong> distribution gives the regression of <span class="math inline">\hat{u}_{j}</span> on <span class="math inline">\hat{\mathbf{u}}_{A_j}</span>:</p>
+<section id="two-treatments" class="level3">
+<h3 class="anchored" data-anchor-id="two-treatments">Two treatments</h3>
+<p>To motivate the general case, consider a single site with two treatments where the within-site variance-covariance structure is</p>
 <p><span class="math display">
-\hat{u}_{j} \mid \hat{\mathbf{u}}_{A_j}
+\mathbf{G}_{ss} =
+\begin{pmatrix} G_{11} &amp; G_{12} \\ G_{12} &amp; G_{22} \end{pmatrix},
+</span></p>
+<p>so the variety BLUPs <span class="math inline">u_1</span> and <span class="math inline">u_2</span> under the two treatments are jointly normal with mean zero and variance <span class="math inline">\mathbf{G}_{ss}</span>. Conditioning treatment 2 on treatment 1 gives</p>
+<p><span class="math display">
+u_2 \mid u_1 \sim \mathcal{N}\!\left(\beta\, u_1,\; \sigma^2_{2 \mid 1}\right),
+\qquad
+\beta = G_{12}/G_{11},
+\qquad
+\sigma^2_{2 \mid 1} = G_{22}\left(1 - \rho^2\right),
+</span></p>
+<p>where <span class="math inline">\rho = G_{12} / \sqrt{G_{11}G_{22}}</span> is the genetic correlation between the two treatments. Here <span class="math inline">u_1</span> is the <strong>efficiency</strong> BLUP and the residual <span class="math inline">r_2 = u_2 - \beta u_1</span> is the <strong>responsiveness</strong> BLUP.</p>
+<p>The form <span class="math inline">G_{22}(1 - \rho^2)</span> shows exactly what responsiveness measures i.e. the genetic variance in treatment 2 that its correlation with treatment 1 leaves unexplained. As <span class="math inline">\rho \to 1</span> the responsiveness variance vanishes and then treatment 2 tells us nothing that treatment 1 has not already explained, and there is no independent axis on which to select. When <span class="math inline">\rho</span> is moderate, a substantial share of the genetic variance in treatment 2 is unique to it, and efficiency and responsiveness can be selected on separately.</p>
+<hr>
+</section>
+<section id="universal-conditional-decomposition" class="level3">
+<h3 class="anchored" data-anchor-id="universal-conditional-decomposition">Universal conditional decomposition</h3>
+<p>At ths point it is prudent to note that conditioning is performed <strong>within sites only</strong>. For a given site <span class="math inline">s</span>, the <span class="math inline">T</span> treatment groups are indexed locally as <span class="math inline">j = 1, \ldots, T</span>. The scalar <span class="math inline">G_{jj}</span> is the marginal genetic variance for treatment <span class="math inline">j</span> at site <span class="math inline">s</span>, i.e. the <span class="math inline">(j,j)</span> element of the within-site diagonal block <span class="math inline">\mathbf{G}_{ss}</span>. The sub-vector <span class="math inline">\mathbf{G}_{A_j j}</span> contains the covariances between treatment <span class="math inline">j</span> and the conditioning set <span class="math inline">A_j \subseteq \{1,\ldots,T\} \setminus \{j\}</span>, drawn from the same block <span class="math inline">\mathbf{G}_{ss}</span>.</p>
+<p>With this specification the <strong>multivariate conditional normal</strong> distribution gives the regression of <span class="math inline">u_{j}</span> on <span class="math inline">\mathbf{u}_{A_j}</span>:</p>
+<p><span class="math display">
+u_{j} \mid \mathbf{u}_{A_j}
   \sim \mathcal{N}\!\left(
-    \boldsymbol{\beta}_j^\top \hat{\mathbf{u}}_{A_j},\;
+    \boldsymbol{\beta}_j^\top \mathbf{u}_{A_j},\;
     \sigma^2_{j \mid A_j}
   \right),
 </span></p>
@@ -4919,7 +4937,7 @@ opacity: 0.92;
 <p>Here <span class="math inline">\mathbf{G}_{A_j A_j}</span>, <span class="math inline">\mathbf{G}_{A_j j}</span>, and <span class="math inline">G_{jj}</span> are all sub-blocks or elements of the within-site diagonal block <span class="math inline">\mathbf{G}_{ss}</span>.</p>
 <p>The <strong>responsiveness BLUP</strong> for variety <span class="math inline">v</span> is the residual from this regression:</p>
 <p><span class="math display">
-\tilde{u}_{j,v} = \hat{u}_{j,v} - \boldsymbol{\beta}_j^\top \hat{\mathbf{u}}_{A_j,v}.
+r_{j,v} = u_{j,v} - \boldsymbol{\beta}_j^\top \mathbf{u}_{A_j,v}.
 </span></p>
 <p>Responsiveness BLUPs are:</p>
 <ul>
@@ -4927,65 +4945,95 @@ opacity: 0.92;
 <li><strong>orthogonal</strong> to the conditioning BLUPs in the G-matrix sense</li>
 <li><strong>genetically independent</strong> of the efficiency signal, with variance <span class="math inline">\sigma^2_{j \mid A_j}</span></li>
 </ul>
+<p>The orthogonality property follows directly from the definition of <span class="math inline">\boldsymbol{\beta}_j</span>. For any conditioning treatment <span class="math inline">l \in A_j</span>,</p>
+<p><span class="math display">
+\operatorname{Cov}(u_l,\, r_j)
+  = G_{lj} - \mathbf{G}_{l A_j}\,\boldsymbol{\beta}_j
+  = G_{lj} - \mathbf{G}_{l A_j}\,\mathbf{G}_{A_j A_j}^{-1}\,\mathbf{G}_{A_j j}
+  = 0 .
+</span></p>
+<p>The final step holds because <span class="math inline">l</span> is itself a member of <span class="math inline">A_j</span>, so the row vector <span class="math inline">\mathbf{G}_{l A_j}</span> is a row of <span class="math inline">\mathbf{G}_{A_j A_j}</span> and the product <span class="math inline">\mathbf{G}_{l A_j}\mathbf{G}_{A_j A_j}^{-1}</span> is the corresponding unit vector, leaving <span class="math inline">G_{lj} - G_{lj} = 0</span>.</p>
 <hr>
 </section>
 <section id="the-transformation-matrix" class="level3">
 <h3 class="anchored" data-anchor-id="the-transformation-matrix">The transformation matrix</h3>
 <p>Collecting all conditioning relationships defines a sparse transformation matrix <span class="math inline">\mathbf{T}</span> such that:</p>
 <p><span class="math display">
-\tilde{\mathbf{u}} = \mathbf{T}\hat{\mathbf{u}},
+\mathbf{u}^{*} = \mathbf{T}\mathbf{u},
 \qquad
-\operatorname{Var}(\tilde{\mathbf{u}}) = \mathbf{T}\mathbf{G}\mathbf{T}^\top
+\operatorname{Var}(\mathbf{u}^{*}) = \mathbf{T}\mathbf{G}\mathbf{T}^\top
   \equiv \mathbf{V}_T.
 </span></p>
-<p>The diagonal blocks of <span class="math inline">\mathbf{V}_T</span> are the conditional genetic variances <span class="math inline">\sigma^2_{j \mid A_j}</span>. For <code>type = &quot;sequential&quot;</code> the full <span class="math inline">\mathbf{V}_T</span> is <strong>diagonal</strong> — a complete Gram-Schmidt orthogonalisation of the BLUP space.</p>
+<p>Because conditioning is within sites, <span class="math inline">\mathbf{T}</span> is block-diagonal with one <span class="math inline">T \times T</span> block <span class="math inline">\mathbf{T}_s</span> per site, and the entries of <span class="math inline">\mathbf{T}_s</span> contain the regression coefficients. In general <span class="math inline">\mathbf{T}_s</span> has this form</p>
+<p><span class="math display">
+[\mathbf{T}_s]_{jl} =
+\begin{cases}
+  1            &amp; l = j \\
+  -\beta_{jl}  &amp; l \in A_j \\
+  0            &amp; \text{otherwise,}
+\end{cases}
+</span></p>
+<p>where <span class="math inline">\beta_{jl}</span> denotes the element of <span class="math inline">\boldsymbol{\beta}_j</span> corresponding to conditioning treatment <span class="math inline">l</span>. Each row of <span class="math inline">\mathbf{T}_s</span> therefore says “take treatment <span class="math inline">j</span> and subtract off what its conditioning set predicts”. Rows for unconditional treatments are left as unit vectors.</p>
+<p>The transformed within-site block is then</p>
+<p><span class="math display">
+\mathbf{V}_{T,s} \equiv \mathbf{T}_s\,\mathbf{G}_{ss}\,\mathbf{T}_s^\top ,
+</span></p>
+<p>and <span class="math inline">\mathbf{V}_T</span> carries these blocks down its diagonal, one per site. The diagonal entries of <span class="math inline">\mathbf{V}_{T,s}</span> are the conditional genetic variances <span class="math inline">\sigma^2_{j \mid A_j}</span>, while its off-diagonal entries record any remaining covariance between the transformed components.</p>
 <hr>
 </section>
 <section id="conditioning-schemes" class="level3">
 <h3 class="anchored" data-anchor-id="conditioning-schemes">Conditioning schemes</h3>
-<p>The four built-in schemes differ only in how <span class="math inline">A_j</span> is chosen:</p>
+<p>The function allows complete flexibility in the choice of conditioning schemes. To help users there are four built-in schemes and they only differ in the conditioning set <span class="math inline">A_j</span>. To to help understand the differences in the transformation components of these onditioning schemes consider <span class="math inline">T = 3</span> at a single site. Treatments are indexed in the order supplied to the <code>levs</code> argument of the function, so treatment 1 is the baseline and column <span class="math inline">\bullet</span> in the <span class="math inline">\mathbf{V}_{T,s}</span> marks an entry that is generally non-zero.</p>
 <table class="table">
 <colgroup>
-<col style="width: 11%">
-<col style="width: 35%">
-<col style="width: 38%">
-<col style="width: 14%">
+<col style="width: 13%">
+<col style="width: 15%">
+<col style="width: 27%">
+<col style="width: 20%">
+<col style="width: 25%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Scheme</th>
-<th><span class="math inline">A_j</span> for treatment <span class="math inline">j</span></th>
-<th><span class="math inline">\mathbf{V}_T</span> structure</th>
+<th style="text-align: center;"><span class="math inline">A_j</span></th>
+<th style="text-align: center;"><span class="math inline">\mathbf{T}_s</span></th>
+<th style="text-align: center;"><span class="math inline">\mathbf{V}_{T,s}</span></th>
 <th>Best for</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
 <td><code>&quot;baseline&quot;</code></td>
-<td><span class="math inline">\{\text{levs}[1]\}</span> only</td>
-<td>Block-diagonal</td>
-<td>Comparing all treatments to one baseline</td>
+<td style="text-align: center;"><span class="math inline">\{1\}</span>, <span class="math inline">j &gt; 1</span></td>
+<td style="text-align: center;"><span class="math inline">\begin{pmatrix} 1 &amp; 0 &amp; 0 \\ -\beta_{21} &amp; 1 &amp; 0 \\ -\beta_{31} &amp; 0 &amp; 1 \end{pmatrix}</span></td>
+<td style="text-align: center;"><span class="math inline">\begin{pmatrix} \bullet &amp; 0 &amp; 0 \\ 0 &amp; \bullet &amp; \bullet \\ 0 &amp; \bullet &amp; \bullet \end{pmatrix}</span></td>
+<td>Comparing all treatments with one reference treatment</td>
 </tr>
 <tr class="even">
 <td><code>&quot;sequential&quot;</code></td>
-<td><span class="math inline">\{\text{levs}[1], \ldots, \text{levs}[j-1]\}</span></td>
-<td>Diagonal (<span class="math inline">\mathbf{L}\mathbf{D}\mathbf{L}^\top</span> Cholesky)</td>
+<td style="text-align: center;"><span class="math inline">\{1, \ldots, j-1\}</span></td>
+<td style="text-align: center;"><span class="math inline">\begin{pmatrix} 1 &amp; 0 &amp; 0 \\ -\beta_{21} &amp; 1 &amp; 0 \\ -\beta_{31} &amp; -\beta_{32} &amp; 1 \end{pmatrix}</span></td>
+<td style="text-align: center;"><span class="math inline">\begin{pmatrix} \bullet &amp; 0 &amp; 0 \\ 0 &amp; \bullet &amp; 0 \\ 0 &amp; 0 &amp; \bullet \end{pmatrix}</span></td>
 <td>Fully orthogonal components</td>
 </tr>
 <tr class="odd">
 <td><code>&quot;partial&quot;</code></td>
-<td>All other treatments simultaneously</td>
-<td>Dense</td>
-<td>Partial genetic variances</td>
+<td style="text-align: center;"><span class="math inline">\{1,2,3\} \setminus \{j\}</span></td>
+<td style="text-align: center;"><span class="math inline">\begin{pmatrix} 1 &amp; -\beta_{12} &amp; -\beta_{13} \\ -\beta_{21} &amp; 1 &amp; -\beta_{23} \\ -\beta_{31} &amp; -\beta_{32} &amp; 1 \end{pmatrix}</span></td>
+<td style="text-align: center;"><span class="math inline">\begin{pmatrix} \bullet &amp; \bullet &amp; \bullet \\ \bullet &amp; \bullet &amp; \bullet \\ \bullet &amp; \bullet &amp; \bullet \end{pmatrix}</span></td>
+<td>Partial genetic variances; no natural baseline</td>
 </tr>
 <tr class="even">
 <td><code>&quot;custom&quot;</code></td>
-<td>User-specified</td>
-<td>Depends</td>
+<td style="text-align: center;">User-specified</td>
+<td style="text-align: center;">e.g. <span class="math inline">\begin{pmatrix} 1 &amp; 0 &amp; 0 \\ -\beta_{21} &amp; 1 &amp; 0 \\ 0 &amp; -\beta_{32} &amp; 1 \end{pmatrix}</span></td>
+<td style="text-align: center;">Depends</td>
 <td>Bespoke experimental logic</td>
 </tr>
 </tbody>
 </table>
+<p>The first three built-in patterns nest. <code>type = &quot;baseline&quot;</code> fills the first column, <code>type = &quot;sequential&quot;</code> extends this to the whole strict lower triangle, and <code>type = &quot;partial&quot;</code> fills every off-diagonal entry. Each step conditions on more information, so the conditional variances on the diagonal of <span class="math inline">\mathbf{V}_{T,s}</span> will accordingly.</p>
+<p>Under <code>type = &quot;sequential&quot;</code> the matrix <span class="math inline">\mathbf{T}_s</span> is unit lower-triangular and equal to <span class="math inline">\mathbf{L}_s^{-1}</span>, where <span class="math inline">\mathbf{G}_{ss} = \mathbf{L}_s\mathbf{D}_s\mathbf{L}_s^\top</span> is the Cholesky decomposition of the within-site block. Hence <span class="math inline">\mathbf{V}_{T,s} = \mathbf{D}_s</span> exactly where all <span class="math inline">T</span> components are mutually orthogonal, a complete Gram-Schmidt orthogonalisation of the BLUP space.</p>
 <hr>
 </section>
 </section>
