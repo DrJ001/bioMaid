@@ -199,6 +199,10 @@ test_that("B: old type 'VE' is rejected (replaced by 'VAF')", {
   expect_error(plot_fastIC(.pfi_res, type = "VE"), "should be one of")
 })
 
+test_that("B: 'VAF' is rejected (moved to plot_faSummary())", {
+  expect_error(plot_fastIC(.pfi_res, type = "VAF"), "should be one of")
+})
+
 # ===========================================================================
 # SECTION C – Precondition checks
 # ===========================================================================
@@ -213,17 +217,6 @@ test_that("C: 'fast' errors when global_op is absent", {
 test_that("C: 'fast' errors when global_stab is absent", {
   res_no_stab <- .pfi_res[, setdiff(names(.pfi_res), "global_stab")]
   expect_error(plot_fastIC(res_no_stab, type = "fast"), "global_stab")
-})
-
-test_that("C: 'VAF' works when vaf_env attribute is present", {
-  p <- plot_fastIC(.pfi_res, type = "VAF")
-  expect_true(inherits(p, "ggplot"))
-})
-
-test_that("C: 'VAF' errors informatively when vaf_env attribute is absent", {
-  res_no_vaf <- .pfi_res
-  attr(res_no_vaf, "vaf_env") <- NULL
-  expect_error(plot_fastIC(res_no_vaf, type = "VAF"), "vaf_env")
 })
 
 test_that("C: 'iclass' errors when iclass column is absent", {
@@ -316,11 +309,6 @@ test_that("D: 'CVE' returns a ggplot", {
   expect_s3_class(p, "ggplot")
 })
 
-test_that("D: 'VAF' returns a ggplot", {
-  p <- plot_fastIC(.pfi_res, type = "VAF")
-  expect_s3_class(p, "ggplot")
-})
-
 test_that("D: 'iclass' returns a ggplot", {
   p <- plot_fastIC(.pfi_res, type = "iclass")
   expect_s3_class(p, "ggplot")
@@ -337,7 +325,7 @@ test_that("D: 'OP.pairs' returns a ggplot", {
 })
 
 test_that("D: return_data = TRUE returns a named list with $plot and $data", {
-  for (typ in c("fast", "biplot", "CVE", "VAF", "iclass", "OP.variety", "OP.pairs")) {
+  for (typ in c("fast", "biplot", "CVE", "iclass", "OP.variety", "OP.pairs")) {
     out <- plot_fastIC(.pfi_res, type = typ, return_data = TRUE)
     expect_type(out, "list")
     expect_true("plot" %in% names(out), label = paste(typ, "has $plot"))
@@ -380,39 +368,6 @@ test_that("E: 'CVE' return_data is a wide matrix (genotype rows, env columns)", 
   # Should have genotype column + one column per environment
   n_envs <- length(unique(.pfi_res$Site))
   expect_equal(ncol(out$data), n_envs + 1L)
-})
-
-test_that("E: 'VAF' return_data is a list with $env and $summary", {
-  out <- plot_fastIC(.pfi_res, type = "VAF", return_data = TRUE)
-  expect_type(out$data, "list")
-  expect_true("env"     %in% names(out$data))
-  expect_true("summary" %in% names(out$data))
-})
-
-test_that("E: 'VAF' $data$env has one row per environment", {
-  out    <- plot_fastIC(.pfi_res, type = "VAF", return_data = TRUE)
-  n_envs <- length(unique(.pfi_res$Site))
-  expect_equal(nrow(out$data$env), n_envs)
-})
-
-test_that("E: 'VAF' $data$summary has k+1 rows (factors + Specific)", {
-  out <- plot_fastIC(.pfi_res, type = "VAF", return_data = TRUE)
-  p   <- biomAid:::.pfi_parse(.pfi_res)
-  expect_equal(nrow(out$data$summary), p$k + 1L)
-})
-
-test_that("E: 'VAF' proportions sum to ~1 per environment", {
-  out     <- plot_fastIC(.pfi_res, type = "VAF", return_data = TRUE)
-  env_df  <- out$data$env
-  p       <- biomAid:::.pfi_parse(.pfi_res)
-  fac_cols <- paste0("Factor", seq_len(p$k))
-  row_sums <- rowSums(env_df[, c(fac_cols, "Specific"), drop = FALSE])
-  expect_true(all(abs(row_sums - 1.0) < 1e-10))
-})
-
-test_that("E: 'VAF' $data$summary pct_var sums to ~1", {
-  out <- plot_fastIC(.pfi_res, type = "VAF", return_data = TRUE)
-  expect_equal(sum(out$data$summary$pct_var), 1.0, tolerance = 1e-10)
 })
 
 test_that("E: 'iclass' return_data has iclass, iClassOP, iClassRMSD columns", {
@@ -466,7 +421,7 @@ test_that("F: highlight = named character vector is accepted", {
 })
 
 test_that("F: highlight = 'default' produces a ggplot without error", {
-  for (typ in c("fast", "biplot", "CVE", "VAF", "iclass", "OP.variety", "OP.pairs")) {
+  for (typ in c("fast", "biplot", "CVE", "iclass", "OP.variety", "OP.pairs")) {
     p <- plot_fastIC(.pfi_res, type = typ, highlight = "default")
     expect_true(inherits(p, "ggplot"), label = paste(typ, "default highlight is ggplot"))
   }
@@ -511,7 +466,9 @@ test_that("G: .pfi_parse() sets has_fast FALSE when global_op absent", {
   expect_false(p$has_fast)
 })
 
-test_that("G: 'vaf_env' attribute present — 'VAF' type can proceed", {
+test_that("G: 'vaf_env' attribute is still carried on fastIC() output", {
+  # Ownership of the VAF calculation moved to faSummary(); fastIC() passes it
+  # through so plot_faSummary(type = "VAF") can consume it.
   expect_false(is.null(attr(.pfi_res, "vaf_env")))
 })
 

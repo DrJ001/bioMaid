@@ -6,7 +6,7 @@
 \usage{
 plot_fastIC(
   res,
-  type = c("fast", "biplot", "CVE", "VAF", "iclass", "OP.pairs", "OP.variety"),
+  type = c("fast", "biplot", "CVE", "iclass", "OP.pairs", "OP.variety"),
   highlight = "default",
   n_highlight = 3L,
   biplot_factors = c(1L, 2L),
@@ -19,8 +19,9 @@ plot_fastIC(
 \item{res}{A long-format data frame returned by \code{\link[=fastIC]{fastIC()}}.}
 
 \item{type}{Character; the visualisation to produce. One of
-\code{"fast"} (default), \code{"biplot"}, \code{"CVE"}, \code{"VAF"}, \code{"iclass"},
-\code{"OP.pairs"}, \code{"OP.variety"}.  May be abbreviated.}
+\code{"fast"} (default), \code{"biplot"}, \code{"CVE"}, \code{"iclass"},
+\code{"OP.pairs"}, \code{"OP.variety"}.  May be abbreviated.  The Variance
+Accounted For chart now lives in \code{\link[=plot_faSummary]{plot_faSummary()}} with \code{type = "VAF"}.}
 
 \item{highlight}{Controls variety annotation. One of \code{"default"}
 (automatic; see Details), a character vector of variety names, or \code{NULL}
@@ -71,13 +72,6 @@ environment loading arrows.  Default axes are Factors 1 \& 2; use
 \item{\code{"CVE"}}{Diverging-colour heatmap of the Common Variety Effect
 (genotype \eqn{\times} environment), ordered by iClass then
 first-factor loading.}
-\item{\code{"VAF"}}{Stacked 100\\% bar chart of Variance Accounted For per
-environment.  Each bar is subdivided by FA factor (blues, bottom to top)
-plus specific variance (grey, top).  A dashed line marks the
-overall (across-environment) mean proportion explained.  Environments
-are ordered to match the \code{"CVE"} heatmap (iClass then first-factor
-loading descending).  Requires the \code{vaf_env} attribute produced by
-\code{\link[=fastIC]{fastIC()}}.}
 \item{\code{"iclass"}}{Scatter of within-class OP vs within-class RMSD,
 faceted by iClass.}
 \item{\code{"OP.pairs"}}{Lower-triangular pairs plot of iClassOP values across
@@ -96,7 +90,6 @@ to annotate based on the plot type:
 \item For \code{"fast"}, \code{"biplot"}, \code{"CVE"}: top \code{n_highlight} by
 \code{global_op} \emph{and} top \code{n_highlight} by instability (\code{global_stab}),
 deduplicated.
-\item For \code{"VAF"}: highlighting is not applicable (environment-level plot).
 \item For \code{"iclass"}, \code{"OP.pairs"}, \code{"OP.variety"}: top \code{n_highlight} by
 mean iClassOP across classes (or by \code{global_op} as fallback).
 }
@@ -126,9 +119,6 @@ plot_fastIC(res, type = "biplot", highlight = c("Var01", "Var22"))
 out <- plot_fastIC(res, type = "CVE", return_data = TRUE)
 head(out$data)
 
-# VAF stacked bar chart
-plot_fastIC(res, type = "VAF")
-
 # iClassOP trajectory for top 5 varieties
 plot_fastIC(res, type = "OP.variety", n_highlight = 5L)
 
@@ -138,5 +128,5 @@ plot_fastIC(res, type = "OP.pairs")
 
 }
 \seealso{
-\code{\link[=fastIC]{fastIC()}}, \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}}
+\code{\link[=fastIC]{fastIC()}}, \code{\link[=faSummary]{faSummary()}}, \code{\link[=plot_faSummary]{plot_faSummary()}}, \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}}
 }

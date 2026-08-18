@@ -403,10 +403,12 @@ randomRegress <- function(model, term = "us(TSite):Variety", levs = NULL,
 
   # ---- Extract BLUPs and G-matrix ----------------------------------------
   if (struct == "fa") {
-    sumfa <- .fa_asreml(model, trunc.char = NULL)
-    pvals <- sumfa$blups[[rterm]]$blups[, 1:3]
+    sumfa <- faSummary(model, term = rterm)
+    fag   <- sumfa$gammas[[rterm]]
+    # Select by name: faSummary() returns <outer>, <inner>, blup, regblup, pres
+    pvals <- sumfa$blups[[rterm]]$blups[, c("blup", fag$outer, fag$inner)]
     names(pvals) <- c("blup", enam, vnam)   # standardise FA column names
-    Gmat  <- sumfa$gammas[[rterm]]$Gmat
+    Gmat  <- fag$Gmat
     pred  <- NULL                            # vcov unavailable; HSD will be NA
   } else {
     pred  <- predict(model, classify = p$classify, only = p$only_term,

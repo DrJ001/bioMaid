@@ -39,7 +39,6 @@ jobs:
             any::rmarkdown
             local::.
             asreml=?ignore
-            ASExtras4=?ignore
           needs: website
 
       - name: Render vignettes

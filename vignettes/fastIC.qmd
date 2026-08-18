@@ -28,11 +28,9 @@ execute:
 #| include: false
 library(biomAid)
 library(ggplot2)
-asreml_ok <- requireNamespace("asreml",    quietly = TRUE) &&
-             requireNamespace("ASExtras4", quietly = TRUE)
+asreml_ok <- requireNamespace("asreml", quietly = TRUE)
 if (asreml_ok) {
   library(asreml)
-  library(ASExtras4)
   asreml.options(trace = FALSE)
 }
 ```
@@ -62,14 +60,13 @@ by the sign pattern of their first `ic.num` rotated loadings. When
 loadings are positive, there is exactly one iClass and the two frameworks
 agree exactly: `iClassOP = GlobalOP` and `iClassRMSD = GlobalRMSD`.
 
-`plot_fastIC()` provides seven complementary visualisations:
+`plot_fastIC()` provides six complementary visualisations:
 
 | Type | Description |
 |------|-------------|
 | `"fast"` | Global OP vs stability (GlobalRMSD) scatter with quadrant annotations |
 | `"biplot"` | FA biplot: genotype scores + environment loading arrows |
 | `"CVE"` | Common Variety Effect heatmap (genotype × environment) |
-| `"VAF"` | Variance Accounted For per environment: stacked 100% bar chart by FA factor |
 | `"iclass"` | iClassOP vs iClassRMSD scatter, faceted by interaction class |
 | `"OP.pairs"` | Lower-triangular pairs plot of iClassOP across all classes |
 | `"OP.variety"` | iClassOP trajectory for highlighted varieties across classes |
@@ -87,7 +84,7 @@ varimax-rotated loadings (element $\hat{\lambda}_{rj}$: factor $r$,
 environment $j$) and $\hat{\boldsymbol{\Psi}} = \operatorname{diag}(\hat{\psi}_1,\ldots,\hat{\psi}_t)$
 is the diagonal specific-variance matrix. After rotation, factor 1 captures
 the dominant non-crossover GEI with typically all-positive loadings; higher
-factors are bipolar. `ASExtras4::fa.asreml()` additionally returns score
+factors are bipolar. `faSummary()` additionally returns score
 EBLUPs $\hat{\mathbf{F}} \in \mathbb{R}^{n \times k}$ (element $\hat{f}_{rg}$:
 factor $r$, variety $g$).
 
@@ -163,7 +160,7 @@ $\overline{\text{VAF}}(r) = \sum_j\hat{\lambda}_{rj}^2 \,/\, \sum_j\sigma^2_j$.
 
 ### Data simulation
 
-> **Requires:** ASReml-R V4 and ASExtras4. The vignette is pre-rendered so
+> **Requires:** ASReml-R V4. The vignette is pre-rendered so
 > no licence is needed to read it; run the code chunks only if you have the
 > packages installed.
 
@@ -311,9 +308,10 @@ invisible from the global rankings alone.
 
 ### Variance Accounted For
 
-The `fastIC()1 function extracts information from `ASExtras4::fa.asreml()` that
-can be useful to visualise. The `"VAF"` plot below shows, for each environment,
-what proportion of the total genetic variance ($\sigma^2_j = \sum_r \hat{\lambda}_{rj}^2 + \hat{\psi}_j$) 
+The FA variance decomposition is performed by `faSummary()`, and the `"VAF"`
+plot of `plot_faSummary()` visualises it. The plot below shows, for each
+environment, what proportion of the total genetic variance
+($\sigma^2_j = \sum_r \hat{\lambda}_{rj}^2 + \hat{\psi}_j$)
 is accounted for by each FA factor versus left in the specific variance.
 Each bar reaches 100%; Factor 1 (darkest blue) occupies the bottom and
 typically dominates, with Factor 2 and Factor 3 adding further layers, and
@@ -324,7 +322,8 @@ explained across all environments.
 ```{r plot1_vaf}
 #| eval: !expr asreml_ok
 #| fig-height: 4.5
-plot_fastIC(res1, type = "VAF")
+fas1 <- faSummary(m1_fa3, term = "fa(Site, 3):Variety")
+plot_faSummary(fas1, type = "VAF")
 ```
 
 ### FAST: Global OP vs Stability
@@ -586,7 +585,8 @@ The subtitle reports the overall proportion explained across all 25 sites.
 ```{r plot2_vaf}
 #| eval: !expr asreml_ok
 #| fig-height: 4.5
-plot_fastIC(res2, type = "VAF")
+fas2 <- faSummary(m2_fa4, term = "fa(Site, 4):Variety")
+plot_faSummary(fas2, type = "VAF")
 ```
 
 ### FAST: Global OP vs Stability
@@ -687,7 +687,7 @@ plot_fastIC(res2, type = "OP.variety", n_highlight = 8L)
 | `model` | — | Fitted ASReml-R V4 model object containing an FA random term |
 | `term` | `"fa(Site, 4):Genotype"` | Full random-effect interaction string, e.g. `"fa(Env, 3):Variety"`. Supports `vm(...)` or `ide(...)` wrappers on the variety factor for relationship-aware models. |
 | `ic.num` | `2L` | Number of factors used to form iClasses ($1 \le \texttt{ic.num} \le k - 1$); the kth factor is reserved for `iClassRMSD`. |
-| `...` | | Additional arguments forwarded to `ASExtras4::fa.asreml()` |
+| `...` | | Additional arguments forwarded to `faSummary()` |
 
 ### `plot_fastIC()` types
 
@@ -696,7 +696,7 @@ plot_fastIC(res2, type = "OP.variety", n_highlight = 8L)
 | `"fast"` | Global OP vs stability scatter with quadrant annotations. Auto-highlights top by `global_op` and top by `global_stab`. |
 | `"biplot"` | FA biplot — genotype score points and environment loading arrows, coloured by iClass. Default axes are Factors 1 & 2; use `biplot_factors = c(i, j)` to display any two factor axes. Requires k ≥ 2. |
 | `"CVE"` | Common Variety Effect heatmap (genotype × environment); environments grouped by iClass, genotypes ordered by `global_op`. |
-| `"VAF"` | Stacked 100% bar chart of Variance Accounted For per environment: FA factors (sequential blues, bottom) plus specific variance (grey, top). Dashed line = overall mean explained. |
+
 | `"iclass"` | iClassOP vs iClassRMSD scatter, faceted by interaction class; per-class mean reference line. Auto-highlights top by mean iClassOP. |
 | `"OP.pairs"` | Lower-triangular pairs plot of iClassOP across all iClass levels; y = x reference diagonal. Requires ≥ 2 classes. Uses `patchwork` when available. |
 | `"OP.variety"` | iClassOP trajectory across ordered interaction classes; highlighted varieties over grey background. Auto-highlights by range of iClassOP. |

@@ -35,6 +35,5 @@ Suggests:
     pkgdown,
     ggrepel,
     patchwork,
-    asreml,
-    ASExtras4
+    asreml
 Config/testthat/edition: 3

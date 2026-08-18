@@ -23,11 +23,17 @@ Thumbs.db
 # Editor temp files (Emacs, vim)
 \#*\#
 .\#*
+*~
 *.swp
 *.swo
 
 # Scratch folder — exploratory scripts, never bundled into the package
 scratch/
+
+# Internal developer notes for the coding assistant, not user documentation.
+# Note: pkgdown still renders any top-level .md it finds on disk, so
+# scratch/build_pkgdown.R also deletes docs/CLAUDE.html after building.
+CLAUDE.md
 
 # Quarto intermediate build artefacts (rendered HTML in docs/ IS committed)
 vignettes/.quarto/

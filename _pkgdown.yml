@@ -79,6 +79,17 @@ reference:
       - fixedRegress
       - plot_fixedRegress
 
+  - title: "Factor Analytic Models"
+    desc: >
+      Extract, rotate and visualise the factor analytic variance structure of
+      an ASReml-R V4 model: genetic covariance and correlation matrices,
+      rotated loadings, specific variances, variance accounted for, and the
+      genotype BLUPs and factor score EBLUPs.
+    contents:
+      - faSummary
+      - plot_faSummary
+      - print.faSummary
+
   - title: "Factor Analytic Selection Tools"
     desc: >
       FAST and interaction class (iClass) approaches derived from Factor
