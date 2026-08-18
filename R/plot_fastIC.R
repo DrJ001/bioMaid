@@ -12,9 +12,7 @@ utils::globalVariables(c(
   "spec.var", "fitted1", "mean_iClassOP", "iclass_lbl",
   "env_label", "geno_label", "ic_label", "panel_x", "panel_y",
   "fill_val", "xend", "yend", "corr", "row_var", "col_var",
-  "stab_val", "op_val", "panel_col",
-  "pct_var", "cum_pct", "factor", "total_var", "spec_pct",
-  "env_fac", "source", "proportion", "ymin", "ymax", "x_num"
+  "stab_val", "op_val", "panel_col"
 ))
 
 #' @importFrom stats aggregate reshape as.formula
@@ -592,162 +590,6 @@ NULL
   )
 }
 
-# ---- "VAF" -------------------------------------------------------------
-
-#' Build the Variance Accounted For stacked bar chart
-#'
-#' @param res   Long-format data frame returned by fastIC().
-#' @param p     Metadata list from .pfi_parse().
-#' @param theme ggplot2 theme object.
-#' @return Named list with $plot (ggplot) and $data (list with $env and $summary).
-#' @noRd
-.pfi_plot_VAF <- function(res, p, theme) {
-
-  vaf_env  <- attr(res, "vaf_env")
-  vaf_summ <- attr(res, "vaf_summary")
-
-  if (is.null(vaf_env) || is.null(vaf_summ))
-    stop("plot_fastIC(): VAF data not found. ",
-         "Please re-run fastIC() to generate the 'vaf_env' and 'vaf_summary' attributes.",
-         call. = FALSE)
-
-  k          <- p$k
-  factor_cols <- paste0("Factor", seq_len(k))
-
-  # ---- Order environments: by iclass then loads1 descending (matches CVE) --
-  env_ord <- if (p$has_iclass && "iclass" %in% names(res)) {
-    ed <- unique(res[, c(p$sterm, "loads1", "iclass"), drop = FALSE])
-    ed <- ed[order(ed$iclass, -ed$loads1), ]
-    as.character(ed[[p$sterm]])
-  } else {
-    ed <- unique(res[, c(p$sterm, "loads1"), drop = FALSE])
-    ed <- ed[order(-ed$loads1), ]
-    as.character(ed[[p$sterm]])
-  }
-
-  # ---- Pivot to long format with explicit ymin/ymax ----------------------
-  # Pre-compute cumulative positions so every segment is placed exactly where
-  # it belongs regardless of near-zero proportions. Factor 1 at the bottom
-  # (ymin = 0), Specific at the top (ymax = 1).  This avoids position_stack
-  # entirely and is immune to the stacking artefacts caused by near-zero
-  # factor segments sandwiched between larger ones.
-  src_levels <- c(paste0("Factor ", seq_len(k)), "Specific")
-
-  long_rows <- vector("list", nrow(vaf_env) * (k + 1L))
-  idx <- 1L
-  for (i in seq_len(nrow(vaf_env))) {
-    env_i   <- as.character(vaf_env[[p$sterm]][i])
-    props   <- c(
-      unlist(vaf_env[i, factor_cols, drop = TRUE]),
-      Specific = vaf_env$Specific[i]
-    )
-    cumul   <- c(0, cumsum(props))  # length k+2: 0, after F1, after F2, ..., after Specific
-    for (s in seq_along(src_levels)) {
-      long_rows[[idx]] <- data.frame(
-        env_fac    = env_i,
-        source     = src_levels[s],
-        ymin       = cumul[s],
-        ymax       = cumul[s + 1L],
-        stringsAsFactors = FALSE
-      )
-      idx <- idx + 1L
-    }
-  }
-  long_df <- do.call(rbind, long_rows)
-
-  long_df$env_fac <- factor(long_df$env_fac, levels = env_ord)
-  long_df$source  <- factor(long_df$source,  levels = src_levels)
-
-  # ---- Colour palette: sequential blues for factors, grey for specific ----
-  # Use a blue-to-teal progression for factors
-  if (k == 1L) {
-    factor_cols_pal <- "#2166AC"
-  } else {
-    # Interpolate from steel blue to teal across k factors
-    factor_cols_pal <- grDevices::colorRampPalette(
-      c("#2166AC", "#41B6C4")
-    )(k)
-  }
-  pal <- c(factor_cols_pal, "grey75")
-  names(pal) <- src_levels
-
-  # ---- Overall % explained label for subtitle ----------------------------
-  pct_explained <- round(100 * (1 - vaf_summ$pct_var[vaf_summ$factor == "Specific"]), 1)
-  pct_specific  <- round(100 * vaf_summ$pct_var[vaf_summ$factor == "Specific"], 1)
-  subtitle_txt  <- sprintf(
-    "Overall: %.1f%% explained by FA factors  |  %.1f%% specific (unexplained)",
-    pct_explained, pct_specific
-  )
-
-  # ---- Overall mean explained line (1 - overall specific proportion) -----
-  overall_explained <- 1 - vaf_summ$pct_var[vaf_summ$factor == "Specific"]
-
-  # ---- Build plot ---------------------------------------------------------
-  # Use geom_rect with explicit xmin/xmax/ymin/ymax so every segment is
-  # placed exactly right — no position_stack ambiguity.
-  # x is a factor so numeric positions 1, 2, ... map to its levels.
-  long_df$x_num <- as.integer(long_df$env_fac)
-  bar_w <- 0.41   # half-width of each bar (total width = 0.82)
-
-  plt <- ggplot2::ggplot(long_df) +
-    ggplot2::geom_rect(
-      ggplot2::aes(
-        xmin = x_num - bar_w,
-        xmax = x_num + bar_w,
-        ymin = ymin,
-        ymax = ymax,
-        fill = source
-      ),
-      colour = NA
-    ) +
-    ggplot2::geom_hline(
-      yintercept = overall_explained,
-      linetype   = "dashed",
-      colour     = "grey30",
-      linewidth  = 0.5
-    ) +
-    ggplot2::annotate(
-      "text",
-      x      = length(env_ord) + 0.4,
-      y      = overall_explained,
-      label  = sprintf("Mean\n%.0f%%", 100 * overall_explained),
-      hjust  = 0,
-      vjust  = 0.5,
-      size   = 2.8,
-      colour = "grey30"
-    ) +
-    ggplot2::scale_fill_manual(
-      values = pal,
-      name   = "Source",
-      guide  = ggplot2::guide_legend(reverse = TRUE)
-    ) +
-    ggplot2::scale_x_continuous(
-      breaks = seq_along(env_ord),
-      labels = env_ord,
-      expand = ggplot2::expansion(add = 0.6)
-    ) +
-    ggplot2::scale_y_continuous(
-      labels = scales::percent_format(accuracy = 1),
-      expand = ggplot2::expansion(mult = c(0, 0.04))
-    ) +
-    ggplot2::coord_cartesian(ylim = c(0, 1)) +
-    ggplot2::labs(
-      x        = p$sterm,
-      y        = "Proportion of genetic variance",
-      title    = "Variance Accounted For (VAF) by FA factors per environment",
-      subtitle = subtitle_txt
-    ) +
-    theme +
-    ggplot2::theme(
-      axis.text.x      = ggplot2::element_text(angle = 45, hjust = 1, size = 7),
-      plot.subtitle    = ggplot2::element_text(size = 8, colour = "grey40"),
-      legend.key.size  = ggplot2::unit(0.45, "cm"),
-      plot.margin      = ggplot2::margin(5, 40, 5, 5)
-    )
-
-  list(plot = plt, data = list(env = vaf_env, summary = vaf_summ))
-}
-
 # ---- "iclass" ----------------------------------------------------------
 
 #' @noRd
@@ -1164,13 +1006,6 @@ NULL
 #'   \item{`"CVE"`}{Diverging-colour heatmap of the Common Variety Effect
 #'     (genotype \eqn{\times} environment), ordered by iClass then
 #'     first-factor loading.}
-#'   \item{`"VAF"`}{Stacked 100\% bar chart of Variance Accounted For per
-#'     environment.  Each bar is subdivided by FA factor (blues, bottom to top)
-#'     plus specific variance (grey, top).  A dashed line marks the
-#'     overall (across-environment) mean proportion explained.  Environments
-#'     are ordered to match the `"CVE"` heatmap (iClass then first-factor
-#'     loading descending).  Requires the `vaf_env` attribute produced by
-#'     [fastIC()].}
 #'   \item{`"iclass"`}{Scatter of within-class OP vs within-class RMSD,
 #'     faceted by iClass.}
 #'   \item{`"OP.pairs"`}{Lower-triangular pairs plot of iClassOP values across
@@ -1187,7 +1022,6 @@ NULL
 #'   \item For `"fast"`, `"biplot"`, `"CVE"`: top `n_highlight` by
 #'     `global_op` \emph{and} top `n_highlight` by instability (`global_stab`),
 #'     deduplicated.
-#'   \item For `"VAF"`: highlighting is not applicable (environment-level plot).
 #'   \item For `"iclass"`, `"OP.pairs"`, `"OP.variety"`: top `n_highlight` by
 #'     mean iClassOP across classes (or by `global_op` as fallback).
 #' }
@@ -1202,8 +1036,9 @@ NULL
 #'
 #' @param res            A long-format data frame returned by [fastIC()].
 #' @param type           Character; the visualisation to produce. One of
-#'   `"fast"` (default), `"biplot"`, `"CVE"`, `"VAF"`, `"iclass"`,
-#'   `"OP.pairs"`, `"OP.variety"`.  May be abbreviated.
+#'   `"fast"` (default), `"biplot"`, `"CVE"`, `"iclass"`,
+#'   `"OP.pairs"`, `"OP.variety"`.  May be abbreviated.  The Variance
+#'   Accounted For chart now lives in [plot_faSummary()] with `type = "VAF"`.
 #' @param highlight      Controls variety annotation. One of `"default"`
 #'   (automatic; see Details), a character vector of variety names, or `NULL`
 #'   (no annotation).  Default `"default"`.
@@ -1228,7 +1063,7 @@ NULL
 #'   The structure of `data` is type-specific — see the Details section for
 #'   each plot type.
 #'
-#' @seealso [fastIC()], [ggplot2::ggplot()]
+#' @seealso [fastIC()], [faSummary()], [plot_faSummary()], [ggplot2::ggplot()]
 #'
 #' @examples
 #' \dontrun{
@@ -1244,9 +1079,6 @@ NULL
 #' out <- plot_fastIC(res, type = "CVE", return_data = TRUE)
 #' head(out$data)
 #'
-#' # VAF stacked bar chart
-#' plot_fastIC(res, type = "VAF")
-#'
 #' # iClassOP trajectory for top 5 varieties
 #' plot_fastIC(res, type = "OP.variety", n_highlight = 5L)
 #'
@@ -1256,7 +1088,7 @@ NULL
 #'
 #' @export
 plot_fastIC <- function(res,
-                        type           = c("fast", "biplot", "CVE", "VAF",
+                        type           = c("fast", "biplot", "CVE",
                                            "iclass", "OP.pairs", "OP.variety"),
                         highlight      = "default",
                         n_highlight    = 3L,
@@ -1316,13 +1148,6 @@ plot_fastIC <- function(res,
            "Was 'res' produced by fastIC()?")
   }
 
-  if (type == "VAF") {
-    if (is.null(attr(res, "vaf_env")))
-      stop("plot_fastIC(): VAF data not found. ",
-           "Please re-run fastIC() to generate the 'vaf_env' attribute.",
-           call. = FALSE)
-  }
-
   # ------------------------------------------------------------------ #
   #  Resolve highlights                                                  #
   # ------------------------------------------------------------------ #
@@ -1337,7 +1162,6 @@ plot_fastIC <- function(res,
     fast       = .pfi_plot_fast(      res, p, hl_names, theme),
     biplot     = .pfi_plot_biplot(    res, p, hl_names, theme, biplot_factors),
     CVE        = .pfi_plot_CVE(       res, p,           theme),
-    VAF        = .pfi_plot_VAF(       res, p,           theme),
     iclass     = .pfi_plot_iclass(    res, p, hl_names, theme),
     OP.pairs   = .pfi_plot_op_pairs(  res, p, hl_names, theme),
     OP.variety = .pfi_plot_op_variety(res, p, hl_names, theme)

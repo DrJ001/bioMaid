@@ -38,7 +38,6 @@ jobs:
             any::knitr
             any::rmarkdown
             asreml=?ignore
-            ASExtras4=?ignore
           needs: website
 
       - name: Render vignettes

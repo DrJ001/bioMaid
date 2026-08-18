@@ -21,7 +21,7 @@ Default \code{"fa(Site, 4):Genotype"}.}
 \eqn{k - 1}) so that the kth factor remains available for \code{iClassRMSD}.
 Default \code{2}.}
 
-\item{...}{Additional arguments forwarded to \code{ASExtras4::fa.asreml()}.}
+\item{...}{Additional arguments forwarded to \code{\link[=faSummary]{faSummary()}}.}
 }
 \value{
 A data frame with one row per environment \eqn{\times} genotype
@@ -67,7 +67,7 @@ approaches for summarising variety performance from a Factor Analytic Linear
 Mixed Model fitted in ASReml-R V4.
 
 Both methods build on the rotated FA loadings \eqn{\hat{\bm{\Lambda}}} and
-score EBLUPs \eqn{\hat{\bm{f}}} returned by \code{ASExtras4::fa.asreml()}.  The
+score EBLUPs \eqn{\hat{\bm{f}}} returned by \code{\link[=faSummary]{faSummary()}}.  The
 \strong{Common Variety Effect} (CVE) for genotype \eqn{g} in environment \eqn{j}
 is the FA regression prediction:
 
@@ -77,8 +77,8 @@ is the FA regression prediction:
 
 The \strong{Variance Accounted For} (VAF) by each factor in environment \eqn{j}
 is \eqn{\hat{\lambda}_{rj}^2 / (\sum_r \hat{\lambda}_{rj}^2 + \hat{\psi}_j)},
-and the specific variance accounts for the remainder; see \code{\link[=plot_fastIC]{plot_fastIC()}} with
-\code{type = "VAF"} for a per-environment visualisation.
+and the specific variance accounts for the remainder; see \code{\link[=plot_faSummary]{plot_faSummary()}}
+with \code{type = "VAF"} for a per-environment visualisation.
 }
 \section{Unified framework}{
 
@@ -159,5 +159,5 @@ mixed models: models with independent variety effects.
 \emph{Frontiers in Plant Science}, 12, 737462.
 }
 \seealso{
-\code{ASExtras4::fa.asreml()}, \code{\link[=plot_fastIC]{plot_fastIC()}}
+\code{\link[=faSummary]{faSummary()}}, \code{\link[=plot_faSummary]{plot_faSummary()}}, \code{\link[=plot_fastIC]{plot_fastIC()}}
 }

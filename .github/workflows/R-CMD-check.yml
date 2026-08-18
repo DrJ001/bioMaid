@@ -43,7 +43,6 @@ jobs:
             any::rcmdcheck
             any::covr
             asreml=?ignore
-            ASExtras4=?ignore
           needs: check
 
       - name: Check

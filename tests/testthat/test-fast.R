@@ -69,16 +69,32 @@
   stringsAsFactors = FALSE
 )
 
-.mock_sfa <- list(
-  gammas = setNames(
-    list(list("rotated loads" = .loads, "specific var" = .spec)),
-    .term
-  ),
-  blups = setNames(
-    list(list(scores = .sc_long)),
-    .term
+# Build a faSummary()-shaped mock.  VAF is produced by the real internal
+# helper so the mock stays consistent with the production calculation.
+.mk_mock_sfa <- function(loads, spec, sc_long, term, envs = .envs) {
+  vaf <- .fa_vaf(loads, spec, envs, "Site")
+  structure(
+    list(
+      gammas = setNames(
+        list(list(
+          loads       = loads,
+          spec_var    = spec,
+          vaf_env     = vaf$vaf_env,
+          vaf_summary = vaf$vaf_summary,
+          vaf_total   = vaf$vaf_total,
+          k           = ncol(loads),
+          env         = envs
+        )),
+        term
+      ),
+      blups = setNames(list(list(scores = sc_long)), term),
+      terms = term
+    ),
+    class = "faSummary"
   )
-)
+}
+
+.mock_sfa <- .mk_mock_sfa(.loads, .spec, .sc_long, .term)
 
 make_fastIC_model <- function() {
   fastIC_mock_data <<- expand.grid(
@@ -92,7 +108,7 @@ make_fastIC_model <- function() {
 }
 
 run_fastIC <- function(ic.num = 2L, term = .term) {
-  local_mocked_bindings(.fa_asreml = function(...) .mock_sfa, .package = "biomAid")
+  local_mocked_bindings(faSummary = function(...) .mock_sfa, .package = "biomAid")
   fastIC(make_fastIC_model(), term = term, ic.num = ic.num)
 }
 
@@ -442,7 +458,7 @@ test_that("B: iClassRMSD > 0 when ic.num = k-1 (kth factor reserved)", {
 # B10. Error: term with no fa() component
 # ---------------------------------------------------------------------------
 test_that("B: fastIC() errors when term has no fa() component", {
-  local_mocked_bindings(.fa_asreml = function(...) .mock_sfa, .package = "biomAid")
+  local_mocked_bindings(faSummary = function(...) .mock_sfa, .package = "biomAid")
   expect_error(
     fastIC(make_fastIC_model(), term = "Site:Genotype"),
     "must contain a 'fa\\("
@@ -453,7 +469,7 @@ test_that("B: fastIC() errors when term has no fa() component", {
 # B11. Error: ic.num >= k
 # ---------------------------------------------------------------------------
 test_that("B: fastIC() errors when ic.num = k", {
-  local_mocked_bindings(.fa_asreml = function(...) .mock_sfa, .package = "biomAid")
+  local_mocked_bindings(faSummary = function(...) .mock_sfa, .package = "biomAid")
   expect_error(
     fastIC(make_fastIC_model(), term = .term, ic.num = 3L),
     "ic.num.*must be between"
@@ -461,7 +477,7 @@ test_that("B: fastIC() errors when ic.num = k", {
 })
 
 test_that("B: fastIC() errors when ic.num > k", {
-  local_mocked_bindings(.fa_asreml = function(...) .mock_sfa, .package = "biomAid")
+  local_mocked_bindings(faSummary = function(...) .mock_sfa, .package = "biomAid")
   expect_error(
     fastIC(make_fastIC_model(), term = .term, ic.num = 5L),
     "ic.num.*must be between"
@@ -502,14 +518,8 @@ test_that("C: k=1 issues warning then errors on ic.num (validation always runs)"
   sc_long_1f <- data.frame(Site  = "Comp1",
                             blupr = .scores[, 1L],
                             stringsAsFactors = FALSE)
-  mock_1f <- list(
-    gammas = setNames(
-      list(list("rotated loads" = loads_1f, "specific var" = .spec)),
-      .term
-    ),
-    blups = setNames(list(list(scores = sc_long_1f)), .term)
-  )
-  local_mocked_bindings(.fa_asreml = function(...) mock_1f, .package = "biomAid")
+  mock_1f <- .mk_mock_sfa(loads_1f, .spec, sc_long_1f, .term)
+  local_mocked_bindings(faSummary = function(...) mock_1f, .package = "biomAid")
   # warning fires (k==1), then stop fires (ic.num=1 >= k=1)
   expect_error(
     withCallingHandlers(
@@ -579,14 +589,8 @@ test_that("C: full term 'fa(Site,3):ide(Genotype)' extracts gterm='Genotype'", {
 
 test_that("C: fastIC() end-to-end works with ide() wrapper in term", {
   ide_term <- "fa(Site, 3):ide(Genotype)"
-  mock_ide <- list(
-    gammas = setNames(
-      list(list("rotated loads" = .loads, "specific var" = .spec)),
-      ide_term
-    ),
-    blups = setNames(list(list(scores = .sc_long)), ide_term)
-  )
-  local_mocked_bindings(.fa_asreml = function(...) mock_ide, .package = "biomAid")
+  mock_ide <- .mk_mock_sfa(.loads, .spec, .sc_long, ide_term)
+  local_mocked_bindings(faSummary = function(...) mock_ide, .package = "biomAid")
   out <- fastIC(make_fastIC_model(), term = ide_term, ic.num = 2L)
   expect_true("Genotype"   %in% names(out))
   expect_true("global_op"  %in% names(out))
@@ -641,7 +645,7 @@ test_that("D: ic.num = 1 is accepted (valid lower boundary)", {
 # D2. ic.num = k is invalid
 # ---------------------------------------------------------------------------
 test_that("D: ic.num = k errors with informative message", {
-  local_mocked_bindings(.fa_asreml = function(...) .mock_sfa, .package = "biomAid")
+  local_mocked_bindings(faSummary = function(...) .mock_sfa, .package = "biomAid")
   expect_error(
     fastIC(make_fastIC_model(), term = .term, ic.num = 3L),
     "kth factor must remain"
@@ -652,7 +656,7 @@ test_that("D: ic.num = k errors with informative message", {
 # D3. ic.num = 0 is invalid
 # ---------------------------------------------------------------------------
 test_that("D: ic.num = 0 errors", {
-  local_mocked_bindings(.fa_asreml = function(...) .mock_sfa, .package = "biomAid")
+  local_mocked_bindings(faSummary = function(...) .mock_sfa, .package = "biomAid")
   expect_error(
     fastIC(make_fastIC_model(), term = .term, ic.num = 0L),
     "ic.num.*must be between"

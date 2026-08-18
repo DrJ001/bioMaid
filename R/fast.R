@@ -7,7 +7,7 @@
 #' Mixed Model fitted in ASReml-R V4.
 #'
 #' Both methods build on the rotated FA loadings \eqn{\hat{\bm{\Lambda}}} and
-#' score EBLUPs \eqn{\hat{\bm{f}}} returned by `ASExtras4::fa.asreml()`.  The
+#' score EBLUPs \eqn{\hat{\bm{f}}} returned by [faSummary()].  The
 #' **Common Variety Effect** (CVE) for genotype \eqn{g} in environment \eqn{j}
 #' is the FA regression prediction:
 #'
@@ -17,8 +17,8 @@
 #'
 #' The **Variance Accounted For** (VAF) by each factor in environment \eqn{j}
 #' is \eqn{\hat{\lambda}_{rj}^2 / (\sum_r \hat{\lambda}_{rj}^2 + \hat{\psi}_j)},
-#' and the specific variance accounts for the remainder; see [plot_fastIC()] with
-#' `type = "VAF"` for a per-environment visualisation.
+#' and the specific variance accounts for the remainder; see [plot_faSummary()]
+#' with `type = "VAF"` for a per-environment visualisation.
 #'
 #' @section Unified framework:
 #' FAST and iClass are treated as a single framework.  FAST global metrics
@@ -93,7 +93,7 @@
 #'   `iClassOP`.  Must be strictly less than \eqn{k} (i.e. between 1 and
 #'   \eqn{k - 1}) so that the kth factor remains available for `iClassRMSD`.
 #'   Default `2`.
-#' @param ...     Additional arguments forwarded to `ASExtras4::fa.asreml()`.
+#' @param ...     Additional arguments forwarded to [faSummary()].
 #'
 #' @return A data frame with one row per environment \eqn{\times} genotype
 #'   combination, sorted by `iclass` then environment then genotype, containing:
@@ -141,7 +141,7 @@
 #' mixed models: models with independent variety effects.
 #' *Frontiers in Plant Science*, 12, 737462.
 #'
-#' @seealso `ASExtras4::fa.asreml()`, [plot_fastIC()]
+#' @seealso [faSummary()], [plot_faSummary()], [plot_fastIC()]
 #' @export
 fastIC <- function(model, term = "fa(Site, 4):Genotype",
                    ic.num = 2L,
@@ -170,9 +170,8 @@ fastIC <- function(model, term = "fa(Site, 4):Genotype",
     gterm <- trimws(gen_part)
   }
 
-  # ---- Data and fa.asreml -----------------------------------------------
-  dat <- eval(model$call$data)
-  sfa <- .fa_asreml(model, ...)
+  # ---- FA summary --------------------------------------------------------
+  sfa <- faSummary(model, term = term, ...)
 
   # ---- Scores: pivot long -> wide  (m genotypes × k factors) -----------
   sc_long    <- sfa$blups[[term]]$scores
@@ -182,12 +181,20 @@ fastIC <- function(model, term = "fa(Site, 4):Genotype",
   m  <- nrow(score_mat)
   colnames(score_mat) <- paste0("score", seq_len(k))
 
-  genotypes <- if (!is.null(rownames(score_mat))) rownames(score_mat)
-               else levels(dat[[gterm]])
+  # Genotype labels, in the order they appear within each Comp block.  Taken
+  # from the score EBLUPs themselves so that fastIC() does not depend on the
+  # original data object still being in scope.
+  genotypes <- if (!is.null(rownames(score_mat))) {
+    rownames(score_mat)
+  } else if (!is.null(sc_long[[gterm]])) {
+    unique(as.character(sc_long[[gterm]]))
+  } else {
+    levels(eval(model$call$data)[[gterm]])
+  }
 
   # ---- Loadings and specific variances: t × k --------------------------
-  loads_mat <- as.matrix(sfa$gammas[[term]]$"rotated loads")  # t × k
-  spec_var  <- sfa$gammas[[term]]$"specific var"              # length t
+  loads_mat <- as.matrix(sfa$gammas[[term]]$loads)            # t × k
+  spec_var  <- sfa$gammas[[term]]$spec_var                    # length t
   envs      <- rownames(loads_mat)
   t_envs    <- length(envs)
   colnames(loads_mat) <- paste0("loads", seq_len(k))
@@ -206,41 +213,11 @@ fastIC <- function(model, term = "fa(Site, 4):Genotype",
   # ---- CVE via matrix multiplication -----------------------------------
   CVE_mat <- score_mat %*% t(loads_mat)        # m × t
 
-  # ---- VAF (Variance Accounted For) per environment --------------------
-  # total genetic variance for env j = sum of squared loadings + specific var.
-  # Clamp spec_var to >= 0 for VAF only: boundary estimates from ASReml-R can
-  # be exactly 0 or fractionally negative (numerical noise after rotation),
-  # which would produce negative proportions and whitespace in the plot.
-  # The original spec_var values are preserved in the main data frame (spec.var).
-  loads_sq      <- loads_mat^2                           # t × k
-  spec_var_vaf  <- pmax(0, spec_var)                     # clamped copy for VAF
-  total_var     <- rowSums(loads_sq) + spec_var_vaf      # length t
-
-  # Per-environment, per-factor proportion of variance explained
-  vaf_mat    <- loads_sq / total_var                     # t × k  (proportions)
-  spec_pct   <- spec_var_vaf / total_var                 # length t
-
-  # env-level VAF data frame: one row per environment
-  vaf_env_df        <- as.data.frame(vaf_mat)
-  names(vaf_env_df) <- paste0("Factor", seq_len(k))
-  vaf_env_df[[sterm]]   <- envs
-  vaf_env_df$Specific   <- spec_pct
-  vaf_env_df$total_var  <- total_var
-  vaf_env_df            <- vaf_env_df[, c(sterm, paste0("Factor", seq_len(k)),
-                                          "Specific", "total_var"), drop = FALSE]
-  rownames(vaf_env_df) <- NULL
-
-  # Overall VAF summary: proportion of total genetic variance across all envs
-  total_all  <- sum(total_var)
-  pct_factor <- colSums(loads_sq)   / total_all          # length k
-  pct_spec   <- sum(spec_var_vaf)   / total_all
-
-  vaf_summary <- data.frame(
-    factor  = c(paste0("Factor ", seq_len(k)), "Specific"),
-    pct_var = c(pct_factor, pct_spec),
-    stringsAsFactors = FALSE
-  )
-  vaf_summary$cum_pct <- cumsum(vaf_summary$pct_var)
+  # ---- VAF (Variance Accounted For) ------------------------------------
+  # Computed by faSummary(), which owns the FA variance decomposition.
+  # Carried through as attributes for plot_faSummary(type = "VAF").
+  vaf_env_df  <- sfa$gammas[[term]]$vaf_env
+  vaf_summary <- sfa$gammas[[term]]$vaf_summary
 
   # ---- Build base long-format data frame (environment-major order) -----
   env_rep  <- rep(seq_len(t_envs), each = m)

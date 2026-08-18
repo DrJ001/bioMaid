@@ -576,14 +576,15 @@ test_that("blups data frame has Site, Variety and correct row count", {
 # ===========================================================================
 
 # ---------------------------------------------------------------------------
-# E1. FA model path — mock .fa_asreml(); HSD columns must all be NA
+# E1. FA model path — mock faSummary(); HSD columns must all be NA
 # ---------------------------------------------------------------------------
 
 # Reuse the FA fixture layout from test-fast-e2e.R
-# .fa_asreml() returns list(gammas=..., blups=...)
+# faSummary() returns list(gammas=..., blups=...)
 # randomRegress.R accesses:
-#   sumfa$blups[[rterm]]$blups[, 1:3]  -> columns (blup, enam, vnam)
-#   sumfa$gammas[[rterm]]$Gmat         -> G-matrix
+#   sumfa$gammas[[rterm]]$outer / $inner  -> column names to select
+#   sumfa$blups[[rterm]]$blups[, c("blup", outer, inner)]
+#   sumfa$gammas[[rterm]]$Gmat            -> G-matrix
 
 make_fa_mock <- function(levs  = c("N0","N1"),
                           sites = c("S1","S2"),
@@ -598,18 +599,18 @@ make_fa_mock <- function(levs  = c("N0","N1"),
   dimnames(Gmat) <- list(tsnams, tsnams)
 
   # Build the blups sub-list:
-  # randomRegress uses: sumfa$blups[[rterm]]$blups[, 1:3]
-  # then renames to c("blup", enam, vnam).
-  # So the element at [[rterm]] must be a list with a $blups data.frame
-  # whose first 3 columns are [blup, TSite, Variety].
+  # randomRegress selects sumfa$blups[[rterm]]$blups[, c("blup", outer, inner)]
+  # by name, then renames to c("blup", enam, vnam).  faSummary() returns the
+  # columns in <outer>, <inner>, blup, regblup, pres order.
   blup_df <- expand.grid(
     TSite          = factor(tsnams, levels = tsnams),
     Variety        = factor(varieties),
     KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE
   )
-  blup_df$blup <- rnorm(nrow(blup_df))
-  # first 3 cols: blup, TSite, Variety  (order matches what the rename expects)
-  blup_df <- blup_df[, c("blup","TSite","Variety")]
+  blup_df$blup    <- rnorm(nrow(blup_df))
+  blup_df$regblup <- rnorm(nrow(blup_df))
+  blup_df$pres    <- 3L
+  blup_df <- blup_df[, c("TSite", "Variety", "blup", "regblup", "pres")]
 
   # The rterm matched by grep() on term.labels of "~ fa(TSite, 1):Variety"
   # is "fa(TSite, 1):Variety" (R inserts a space after the comma).
@@ -617,9 +618,13 @@ make_fa_mock <- function(levs  = c("N0","N1"),
 
   blup_inner  <- list(blups = blup_df)          # $blups holds the data.frame
   blup_outer  <- setNames(list(blup_inner), fa_rterm)
-  gam_outer   <- setNames(list(list(Gmat = Gmat)), fa_rterm)
+  gam_outer   <- setNames(
+    list(list(Gmat = Gmat, outer = "TSite", inner = "Variety", k = 1L)),
+    fa_rterm
+  )
 
-  list(gammas = gam_outer, blups = blup_outer)
+  structure(list(gammas = gam_outer, blups = blup_outer, terms = fa_rterm),
+            class = "faSummary")
 }
 
 make_fa_model <- function() {
@@ -634,8 +639,8 @@ make_fa_model <- function() {
 test_that("FA path: runs without error and HSD columns are all NA", {
   fa_mock <- make_fa_mock()
   local_mocked_bindings(
-    .fa_asreml = function(...) fa_mock,
-    .package   = "biomAid"
+    faSummary = function(...) fa_mock,
+    .package  = "biomAid"
   )
   res <- randomRegress(make_fa_model(),
                        term = "fa(TSite, 1):Variety",

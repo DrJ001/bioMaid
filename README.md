@@ -342,6 +342,76 @@ plot_padTrial(result,
 
 ---
 
+### `faSummary()` — Factor analytic model summary
+
+Extracts and rotates the factor analytic variance structure from an ASReml-R V4
+model, returning one entry for every `fa()` term in the random formula. Provides
+the genetic covariance (`Gmat`) and correlation (`Cmat`) matrices, the rotated
+loadings, specific variances, variance accounted for, and the genotype BLUPs and
+factor score EBLUPs. This is the engine underlying `fastIC()` and the FA path of
+`randomRegress()`.
+
+Where a model fits both `fa(Site, k):vm(Variety, G)` and
+`fa(Site, k):ide(Variety)`, an additional `"<outer>:<inner>-total"` entry holds
+the summed covariance structure and BLUPs.
+
+```r
+faSummary(model, term = NULL, blups = TRUE, combine.ide = TRUE)
+```
+
+| Argument | Description |
+|----------|-------------|
+| `model` | An ASReml-R V4 model object with at least one `fa()` random term |
+| `term` | FA term(s) to summarise, e.g. `"fa(Site, 3):Variety"`. Default `NULL` = all FA terms found |
+| `blups` | Return genotype BLUPs and factor score EBLUPs. Default `TRUE` |
+| `combine.ide` | Append the combined `vm()` + `ide()` "total" structure where such a pair exists. Default `TRUE` |
+
+Each `$gammas[[term]]` element contains `Gmat`, `Cmat`, `loads`, `loads_cor`,
+`spec_var`, `vaf_env`, `vaf_summary`, `vaf_total` and `k`; each
+`$blups[[term]]` element contains `blups` and `scores` data frames.
+
+---
+
+### `plot_faSummary()` — Visualise the FA structure
+
+Five diagnostic plots for the output of `faSummary()`.
+
+```r
+plot_faSummary(res,
+               type        = c("VAF", "heatmap", "loadings",
+                               "regress", "added"),
+               term        = NULL,
+               order       = c("loading", "asis", "cluster"),
+               varieties   = "default",
+               n_varieties = 6L,
+               tol         = 0.85,
+               theme       = ggplot2::theme_bw(),
+               return_data = FALSE,
+               ...)
+```
+
+| Argument | Description |
+|----------|-------------|
+| `res` | An object of class `faSummary` |
+| `type` | Plot type. Default `"VAF"` |
+| `term` | Which FA term to plot. Default `NULL` = first term carrying loadings |
+| `order` | Environment ordering for `"VAF"` and `"heatmap"`: `"loading"`, `"asis"` or `"cluster"` |
+| `varieties` | Varieties shown in `"regress"` / `"added"`; `"default"` picks each factor's extremes |
+| `n_varieties` | Maximum number of varieties selected by `"default"`. Default `6L` |
+| `tol` | Radius threshold flagging well-explained environments in `"loadings"`. Default `0.85` |
+| `theme` | A ggplot2 theme object. Default `theme_bw()` |
+| `return_data` | `TRUE` returns a list with `$plot` and `$data`. Default `FALSE` |
+
+| Type | Description |
+|------|-------------|
+| `"VAF"` | Stacked 100% bar chart of Variance Accounted For per environment. Each bar is subdivided by FA factor (sequential blues, bottom to top) plus specific variance (grey, top). A dashed line marks the overall mean proportion explained across environments. |
+| `"heatmap"` | Genetic correlation between environments on a diverging palette centred at zero. Use `order = "cluster"` to reveal block structure. |
+| `"loadings"` | Correlation-scaled loadings as vectors from the origin, one panel per factor pair, with the unit circle for reference. Environments reaching beyond `tol` are drawn solid. Requires k ≥ 2. |
+| `"regress"` | Genotype BLUPs against environment loadings, one panel per variety and factor, with a line whose slope is the variety's factor score. |
+| `"added"` | As `"regress"`, but BLUPs are adjusted by removing every other factor's contribution — the correct display when k ≥ 2. |
+
+---
+
 ### `fastIC()` — Factor Analytic Selection Tools
 
 Implements the **FAST** (Smith & Cullis 2018) and **iClass** (Smith et al. 2021)
@@ -351,9 +421,11 @@ ASReml-R V4. Always computes both global FAST metrics (`global_op`,
 The genotype factor may be wrapped in `vm(...)` or `ide(...)` for
 relationship-aware models.
 
-Two attributes are attached to the returned data frame for use by `plot_fastIC()`:
-`vaf_env` (per-environment variance accounted for by each factor and the specific
-variance) and `vaf_summary` (overall proportions across all environments).
+The FA decomposition is performed by `faSummary()`. Two of its results are
+carried through as attributes of the returned data frame — `vaf_env`
+(per-environment variance accounted for by each factor and the specific
+variance) and `vaf_summary` (overall proportions across all environments) — for
+use by `plot_faSummary(type = "VAF")`.
 
 ```r
 fastIC(model, term = "fa(Site, 4):Genotype",
@@ -371,14 +443,15 @@ fastIC(model, term = "fa(Site, 4):Genotype",
 
 ### `plot_fastIC()` — Visualise FAST and iClass results
 
-Seven plot types for exploring the output of `fastIC()`. Covers global
-performance and stability, the FA factor structure, per-environment variance
-decomposition, within-class metrics, and cross-class comparisons — together
-providing a comprehensive view of the GEI landscape captured by the FA model.
+Six plot types for exploring the output of `fastIC()`. Covers global
+performance and stability, the FA factor structure, within-class metrics, and
+cross-class comparisons — together providing a comprehensive view of the GEI
+landscape captured by the FA model. The per-environment variance decomposition
+lives in `plot_faSummary(type = "VAF")`.
 
 ```r
 plot_fastIC(res,
-            type        = c("fast", "biplot", "CVE", "VAF",
+            type        = c("fast", "biplot", "CVE",
                             "iclass", "OP.pairs", "OP.variety"),
             highlight   = "default",
             n_highlight = 3L,
@@ -391,7 +464,7 @@ plot_fastIC(res,
 |----------|-------------|
 | `res` | Data frame returned by `fastIC()` |
 | `type` | Plot type. Default `"fast"` |
-| `highlight` | `"default"` auto-selects varieties (by `global_op` / instability for `"fast"`, `"biplot"`, `"CVE"`; by mean iClassOP for `"iclass"`, `"OP.pairs"`, `"OP.variety"`); character vector for explicit names; `NULL` = no annotation. Not applicable to `"VAF"` |
+| `highlight` | `"default"` auto-selects varieties (by `global_op` / instability for `"fast"`, `"biplot"`, `"CVE"`; by mean iClassOP for `"iclass"`, `"OP.pairs"`, `"OP.variety"`); character vector for explicit names; `NULL` = no annotation |
 | `n_highlight` | Maximum number of varieties to highlight automatically. Default `3L` |
 | `theme` | A ggplot2 theme object. Default `theme_bw()` |
 | `return_data` | `TRUE` returns a list with `$plot` and `$data`. Default `FALSE` |
@@ -401,7 +474,6 @@ plot_fastIC(res,
 | `"fast"` | Scatter of global Overall Performance (`global_op`) vs global stability (`global_stab`) with quadrant annotations (Broadly adapted / Responsive / Poor & stable / Poor & unstable). |
 | `"biplot"` | FA biplot with genotype score points and environment loading arrows for Factors 1 and 2. Arrows coloured by iClass when present. |
 | `"CVE"` | Diverging-colour heatmap of the Common Variety Effect (genotype × environment). Environments ordered by iClass then first-factor loading; genotypes by `global_op`. |
-| `"VAF"` | Stacked 100% bar chart of Variance Accounted For per environment. Each bar is subdivided by FA factor (sequential blues, bottom to top) plus specific variance (grey, top). A dashed line marks the overall mean proportion explained across environments. |
 | `"iclass"` | Scatter of within-class iClassOP vs iClassRMSD, faceted by iClass with a per-class mean-OP reference line. |
 | `"OP.pairs"` | Lower-triangular pairs plot of iClassOP across all iClass levels. Uses `patchwork` when available; falls back to `facet_grid`. Requires ≥ 2 iClass levels. |
 | `"OP.variety"` | Line plot of iClassOP across ordered interaction classes. Highlighted varieties drawn in colour over a grey background of all other varieties. |

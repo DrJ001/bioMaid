@@ -10,14 +10,9 @@ NULL
 # These thin wrappers live in the biomAid namespace so that
 # testthat::local_mocked_bindings() can substitute them in tests without
 # requiring an ASReml-R licence in CI.
-
-#' @noRd
-.fa_asreml <- function(model, ...) {
-  if (!requireNamespace("ASExtras4", quietly = TRUE))
-    stop("Package 'ASExtras4' is required for FA analysis. ",
-         "Please install it from the ASReml-R website.", call. = FALSE)
-  ASExtras4::fa.asreml(model, ...)
-}
+#
+# The FA decomposition itself is implemented natively by faSummary(); the
+# ASExtras4 dependency it replaced has been removed.
 
 #' @noRd
 .asreml_vparams <- function(model, term) {

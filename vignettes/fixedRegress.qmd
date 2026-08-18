@@ -59,7 +59,7 @@ response:
 | Regression | OLS with intercept | G-matrix conditional (through origin) |
 | Response measure | OLS residual (response index) | Conditional BLUP (responsiveness) |
 | Requires G-matrix | No | Yes (FA model) |
-| Requires ASExtras4 | No | Yes |
+| Requires an FA decomposition | No | Yes (via `faSummary()`) |
 | Applicable model types | Any fixed-treatment model | FA or unstructured G models |
 
 `plot_fixedRegress()` visualises the result as a regression scatter plot or an
