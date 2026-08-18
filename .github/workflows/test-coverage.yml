@@ -27,7 +27,6 @@ jobs:
             any::covr
             any::testthat
             asreml=?ignore
-            ASExtras4=?ignore
           needs: coverage
 
       - name: Run coverage
