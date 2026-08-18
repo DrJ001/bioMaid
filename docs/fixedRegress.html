@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Julian Taylor">
-<meta name="dcterms.date" content="2026-05-08">
+<meta name="dcterms.date" content="2026-08-18">
 
 <title>biomAid - Fixed Regression of Treatment BLUPs from multi-treatment MET anlyses</title>
 <style>
@@ -4807,7 +4807,7 @@ opacity: 0.92;
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">May 8, 2026</p>
+      <p class="date">August 18, 2026</p>
     </div>
   </div>
   
@@ -4863,9 +4863,9 @@ opacity: 0.92;
 <td>Yes (FA model)</td>
 </tr>
 <tr class="odd">
-<td>Requires ASExtras4</td>
+<td>Requires an FA decomposition</td>
 <td>No</td>
-<td>Yes</td>
+<td>Yes (via <code>faSummary()</code>)</td>
 </tr>
 <tr class="even">
 <td>Applicable model types</td>
@@ -5084,11 +5084,11 @@ opacity: 0.92;
 <span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Multi-section model using the sigma parameterization.
-ASReml 4.1.0 Fri May  8 20:58:29 2026
+ASReml 4.1.0 Tue Aug 18 22:26:22 2026
           LogLik        Sigma2     DF     wall    cpu
- 1     -3199.430           1.0    480 20:58:29    0.1
- 2     -3199.430           1.0    480 20:58:29    0.0
- 3     -3199.430           1.0    480 20:58:29    0.0</code></pre>
+ 1     -3199.430           1.0    480 22:26:22    0.1
+ 2     -3199.430           1.0    480 22:26:22    0.0
+ 3     -3199.430           1.0    480 22:26:22    0.1</code></pre>
 </div>
 </div>
 <p>The OLS slopes <span class="math inline">\hat{\beta}</span> for each conditioned treatment within each site are stored in <code>res$beta</code>:</p>
@@ -5136,11 +5136,11 @@ Env4 250.5441 253.7067</code></pre>
 <span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Multi-section model using the sigma parameterization.
-ASReml 4.1.0 Fri May  8 20:58:29 2026
+ASReml 4.1.0 Tue Aug 18 22:26:22 2026
           LogLik        Sigma2     DF     wall    cpu
- 1     -3199.430           1.0    480 20:58:29    0.0
- 2     -3199.430           1.0    480 20:58:29    0.0
- 3     -3199.430           1.0    480 20:58:29    0.0</code></pre>
+ 1     -3199.430           1.0    480 22:26:22    0.1
+ 2     -3199.430           1.0    480 22:26:22    0.0
+ 3     -3199.430           1.0    480 22:26:23    0.1</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># T2 is now conditioned on both T0 and T1</span></span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>res_seq<span class="sc">$</span>cond_list</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -5181,11 +5181,11 @@ $T2
 <span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Multi-section model using the sigma parameterization.
-ASReml 4.1.0 Fri May  8 20:58:29 2026
+ASReml 4.1.0 Tue Aug 18 22:26:23 2026
           LogLik        Sigma2     DF     wall    cpu
- 1     -3199.430           1.0    480 20:58:29    0.0
- 2     -3199.430           1.0    480 20:58:29    0.0
- 3     -3199.430           1.0    480 20:58:29    0.0</code></pre>
+ 1     -3199.430           1.0    480 22:26:23    0.1
+ 2     -3199.430           1.0    480 22:26:23    0.0
+ 3     -3199.430           1.0    480 22:26:23    0.1</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># T0 is now conditioned on T1 and T2; T1 on T0 and T2; T2 on T0 and T1</span></span>
 <span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>res_part<span class="sc">$</span>cond_list</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
@@ -5218,11 +5218,11 @@ $T2
 <span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Multi-section model using the sigma parameterization.
-ASReml 4.1.0 Fri May  8 20:58:30 2026
+ASReml 4.1.0 Tue Aug 18 22:26:24 2026
           LogLik        Sigma2     DF     wall    cpu
- 1     -3199.430           1.0    480 20:58:30    0.0
- 2     -3199.430           1.0    480 20:58:30    0.0
- 3     -3199.430           1.0    480 20:58:30    0.0</code></pre>
+ 1     -3199.430           1.0    480 22:26:24    0.1
+ 2     -3199.430           1.0    480 22:26:24    0.0
+ 3     -3199.430           1.0    480 22:26:24    0.1</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>res_cust<span class="sc">$</span>cond_list</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
